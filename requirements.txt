@@ -1,0 +1,11 @@
+g4f==0.3.2.2
+pyTelegramBotAPI==4.22.1
+MukeshAPI==0.6.5.6
+googletrans==4.0.0rc1
+qrcode==7.4.2
+requests==2.31.0
+requests-html==0.10.0
+httpx==0.13.3
+curl_cffi==0.7.1
+gTTS==2.5.3
+pytubefix==6.13.0
