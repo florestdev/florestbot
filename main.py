@@ -1,45 +1,28 @@
 # -*- coding: utf-8 -*-
-# Главный файл для работы с исходным кодом FlorestBot.
-# Все переменные находятся в config.py
-# Благодарю за использование данного кода!
-
-import os # импортируем ос.
-
-try: # пытаемся импортировать библиотеки
+import os
+try:
     import telebot
     import g4f.Provider
     import g4f.client
     from telebot import TeleBot, types
     import time, pathlib, sys, logging
     from MukeshAPI import api
-    import googletrans, g4f, random, os
+    import g4f, random, os
     from config import *
     from qrcode import make as create_qr
     import string, requests, threading
     from gtts import gTTS
-    import io, pytubefix
+    import io
     from telebot.util import quick_markup
-except ImportError: # если их нет, то предлагаем установить зависимости из файла requirements.txt
-    input(f'Внимание! Невозможно импортировать некоторые библиотеки.\nНажмите на Enter для скачивания всех нужных библиотек.')
+except ImportError:
+    input(f'Нажмите Enter для установки нужных библиотек...')
     os.system('pip install -r requirements.txt')
 
-url = 'https://florestdev.github.io/clicker-html/' # ссылка на кликер
-bot = TeleBot(token=token) # инициализация бота
-path = pathlib.Path(sys.argv[0]).parent.resolve() # узнаем точную директорию для работы с файлами
-users = [] # пользователи группового чата
-
-def check_video_url(id: str):
-    file = open('prohibitions/banned_videos.txt')
-    if id in file.readlines():
-        return True
-    else:
-        return False
-def check_author(author: str):
-    file = open('prohibitions/banned_authors.txt')
-    if author in file.readlines():
-        return True
-    else:
-        return False
+url = 'https://florestdev.github.io/clicker-html/'
+bot = TeleBot(token=token)
+path = pathlib.Path(sys.argv[0]).parent.resolve()
+users = []
+admins = [7455363246]
 
 def check_user(user: int):
     if str(user) in open(path / 'banned_users.txt').readlines():
@@ -50,6 +33,41 @@ def check_user(user: int):
 def send_reaction(chat_id: int, message_id: int, emoji: str):
     requests.post(f'https://api.telegram.org/bot{token}/setMessageReaction', json={"chat_id":chat_id, 'message_id':message_id, 'reaction':[{'type':'emoji', 'emoji':emoji}], 'is_big':False})
 
+def download_music():
+    headers = {
+        'Accept': 'application/json, text/javascript, */*; q=0.01',
+        'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7,fi;q=0.6,nb;q=0.5,is;q=0.4,pt;q=0.3,ro;q=0.2,it;q=0.1,de;q=0.1',
+        'Connection': 'keep-alive',
+        'Referer': 'https://music.yandex.ru/chart',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+        'X-Current-UID': '403036463',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-Retpath-Y': 'https://music.yandex.ru/chart',
+        'sec-ch-ua': '"Not?A_Brand";v="8", "Chromium";v="108", "Google Chrome";v="108"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Linux"',
+    }
+
+    params = {
+        'what': 'chart',
+        'lang': 'ru',
+        'external-domain': 'music.yandex.ru',
+        'overembed': 'false',
+        'ncrnd': '0.23800355071570123',
+    }
+    result = []
+    response = requests.get('https://music.yandex.ru/handlers/main.jsx', params=params, headers=headers)
+    chart = response.json()['chartPositions']
+    for track in chart[:10]:
+        position = track['track']['chart']['position']
+        title = track['track']['title']
+        author = track['track']['artists'][0]['name']
+        result.append(f"№{position}: {author} - {title}")
+    return f'Чарты Яндекс Музыки на данный момент🔥\n🥇{result[0]}\n🥈{result[1]}\n🥉{result[2]}\n{result[3]}\n{result[4]}\n{result[5]}\n{result[6]}\n{result[7]}\n{result[8]}\n{result[9]}'
+
 @bot.message_handler(commands=['start'])
 def welcome(message: types.Message):
     markup1 = types.InlineKeyboardMarkup()
@@ -58,7 +76,7 @@ def welcome(message: types.Message):
     button31 = types.InlineKeyboardButton('Другие ресурсы Флореста', url='https://taplink.cc/florestone4185')
     markup1.add(button1, button21, button31)
     bot.send_message(message.chat.id, f'Добро пожаловать в бота Флореста.\nВсе функции находятся в меню ниже.', reply_markup=markup1)
-    msg=bot.send_message(message.chat.id, f'Утилиты бота', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Перевод текста на русский', callback_data='russian-perevod-txt'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url))))
+    msg=bot.send_message(message.chat.id, f'Утилиты бота', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ песни с чартов', callback_data='download-audio-from-youtube')))
     bot.reply_to(msg, f'На будущее, вдруг меню пропадет.', reply_markup=types.ReplyKeyboardMarkup(True).add(types.KeyboardButton('🏡В меню')))
 
 
@@ -82,10 +100,10 @@ def ai_obrabotchik(message: types.Message, type: int):
 
 @bot.message_handler(commands=['admin_panel'])
 def admin_panel(message: types.Message):
-    if message.from_user.id not in admins:
-        bot.reply_to(message, f'Ошибка! Доступ к данной панели есть только у создателя бота.')
+    if message.from_user.id != 7455363246:
+        bot.reply_to(message, f'Ошибка! Доступ к данной панели есть только у создателя бота @florestone4185.')
     else:
-        bot.reply_to(message, f'Привет, {message.from_user.first_name}!', protect_content=True, reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Заблокировать видео', callback_data='ban-video'), types.InlineKeyboardButton('Заблокировать канал', callback_data='ban-channel'), types.InlineKeyboardButton('Добавить Inline клавиатуру', callback_data='add_keyboard_admin_panel')))
+        bot.reply_to(message, f'Здаров, Флорест.\nНиже кнопки действий.', protect_content=True, reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Заблокировать видео', callback_data='ban-video'), types.InlineKeyboardButton('Заблокировать канал', callback_data='ban-channel'), types.InlineKeyboardButton('Добавить Inline клавиатуру', callback_data='add_keyboard_admin_panel')))
 
 @bot.message_handler(commands=['donate'])
 def send_donate(message: types.Message):
@@ -95,7 +113,7 @@ def send_donate(message: types.Message):
 @bot.message_handler(content_types=['text'])
 def text_obrabbbb(message: types.Message):
     if message.text == '🏡В меню':
-        bot.send_message(message.chat.id, f'Утилиты бота', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Перевод текста на русский', callback_data='russian-perevod-txt'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url))))
+        bot.send_message(message.chat.id, f'Утилиты бота', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ песни с чартов', callback_data='download-audio-from-youtube')))
     else:
         pass
 
@@ -126,16 +144,7 @@ def get_weather(message: types.Message):
             send_reaction(message.chat.id, message.id, "🤷")   
     else:
         bot.reply_to(message, f'Вы не отправили текстовое сообщение с названием Вашего города.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-        send_reaction(message.chat.id, message.id, "🤷")   
-
-def txt_document_perevod(message: types.Message):
-    bot.send_chat_action(message.chat.id, 'typing')
-    if message.text:
-        translated = googletrans.Translator().translate(message.text, 'ru').text
-        bot.reply_to(message, translated, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-    else:
-        bot.reply_to(message, f'Мы не нашли текст в Вашем сообщении.')
-        send_reaction(message.chat.id, message.id, "🤷")   
+        send_reaction(message.chat.id, message.id, "🤷")      
 
 def create_voice_by_text(message: types.Message):
     if not message.text:
@@ -151,37 +160,6 @@ def create_voice_by_text(message: types.Message):
         except Exception as e:
             bot.reply_to(message, f'Произошла ошибка: {e}', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back'), types.InlineKeyboardButton('Помощь', callback_data='help')))
             send_reaction(message.chat.id, message.id, "🤷")   
-
-def download_yt_func(message: types.Message):
-    if not message.text:
-        bot.reply_to(message, f'Не смогли найти текст в Вашем сообщении.')   
-        send_reaction(message.chat.id, message.id, "🤷")     
-    else:
-        msg_repl = bot.reply_to(message, f'Видео может скачиваться небольшое количество времени. Просто, ждите.')
-        try:
-            send_reaction(message.chat.id, message.id, '👍')
-            yt = pytubefix.YouTube(message.text, 'WEB_SAFARI', proxies=proxies)
-            if yt.age_restricted:
-                send_reaction(message.chat.id, message.id, "🤷")
-                bot.edit_message_text(f'Невозможно скачать видео, так как на него наложены возрастные ограничения.', message.chat.id, msg_repl.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back'), types.InlineKeyboardButton('Помощь', callback_data='help')))
-            else:
-                if check_author(yt.channel_id):
-                    send_reaction(message.chat.id, message.id, "🤷")
-                    bot.edit_message_text(f'Автор данного видео ({yt.author}) заблокирован в системе.\nСкачивание видео запрещено.\n(Просьба сообщать о незаконном контенте ко мне на почту. Она находится в кнопке "Помощь".)', message.chat.id, msg_repl.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back'), types.InlineKeyboardButton('Помощь', callback_data='help')))
-                else:
-                    if check_video_url(yt.video_id):
-                        send_reaction(message.chat.id, message.id, "🤷")
-                        bot.edit_message_text(f'Данное видео заблокировано в системе.\nЕго скачивание запрещено.\n(Просьба сообщать о незаконном контенте ко мне на почту. Она находится в кнопке "Помощь".)', message.chat.id, msg_repl.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back'), types.InlineKeyboardButton('Помощь', callback_data='help')))
-                    else:
-                        video = yt.streams.get_highest_resolution()
-                        bytes_ = io.BytesIO()
-                        video.stream_to_buffer(bytes_)
-                        bot.send_chat_action(message.chat.id, 'upload_video')
-                        bot.send_video(message.chat.id, bytes_.getvalue(), yt.length, caption=f'{yt.author} - {yt.title}\nПросмотры: {yt.views}\nСсылка: {message.text}\nВидео весит {len(bytes_.getvalue())} байт.', supports_streaming=True, timeout=50000, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-                        bot.delete_message(message.chat.id, msg_repl.id)
-        except Exception as e:
-            send_reaction(message.chat.id, message.id, "🤷")
-            bot.edit_message_text(f'Произошла ошибка: {e}.\nВнимание! Данная функция может не работать из-за замедления YouTube, либо из-за защиты YouTube от ботов и сторонних приложений.', message.chat.id, msg_repl.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back'), types.InlineKeyboardButton('Помощь', callback_data='help')))
 
 def ban_video_fl(message: types.Message):
     bot.reply_to(message, f'Внесли видео в блоклист.')
@@ -331,12 +309,10 @@ def pon(call: types.CallbackQuery):
     if call.data == 'otmena_galya':
         bot.delete_message(call.message.chat.id, call.message.id)
         bot.clear_step_handler_by_chat_id(call.message.chat.id)
-        bot.send_message(call.message.chat.id, f'Утилиты бота.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Перевод текста на русский', callback_data='russian-perevod-txt'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url))))
+        bot.send_message(call.message.chat.id, f'Утилиты бота.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'),  types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ песни с чартов', callback_data='download-audio-from-youtube')))
     if call.data == 'chat_zaversit':
         bot.send_message(call.message.chat.id, f'Было приятно с Вами пообщаться! Если захотите еще, то нажмите на кнопку в команде `/start`.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
         bot.clear_step_handler_by_chat_id(call.message.chat.id)
-    if call.data == 'fact-about-cat':
-        bot.edit_message_text(googletrans.Translator().translate(eval(requests.get('https://catfact.ninja/fact').text)['fact'], 'ru').text, call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
     if call.data == 'generate_qr':
         bot.edit_message_text('Напиши ссылку, на которую будет вести QR код.\nИли контент, который будет показываться после сканирования.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
         bot.register_next_step_handler(call.message, generate_qr__)
@@ -350,9 +326,6 @@ def pon(call: types.CallbackQuery):
     if call.data == 'weather-info':
         bot.edit_message_text('Напиши название своего населенного пункта.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
         bot.register_next_step_handler(call.message, get_weather)
-    if call.data == 'russian-perevod-txt':
-        bot.edit_message_text(f'Пришлите ваш текст на иностранном языке для перевода на русский язык.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
-        bot.register_next_step_handler(call.message, txt_document_perevod)
     if call.data == 'ai-text':
         bot.edit_message_text(f'Напишите запрос для ChatGPT, пожалуйста.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
         bot.register_next_step_handler(call.message, ai_obrabotchik, 2)
@@ -364,12 +337,9 @@ def pon(call: types.CallbackQuery):
         bot.register_next_step_handler(call.message, create_voice_by_text)
     if call.data == 'back':
         bot.edit_message_reply_markup(call.message.chat.id, call.message.id, reply_markup=None)
-        bot.send_message(call.message.chat.id, f'Утилиты бота.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Перевод текста на русский', callback_data='russian-perevod-txt'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url))))
+        bot.send_message(call.message.chat.id, f'Утилиты бота.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Перевод текста на русский', callback_data='russian-perevod-txt'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ чартов', callback_data='download-audio-from-youtube')))
     if call.data == 'help':
         bot.answer_callback_query(call.id, f'Привет!\nДля помощи по боту, Вам нужно связаться с его создателем (Флорестом).\nДержите его социальные сети!\nTelegram: @florestone4185\nDiscord: florestone4185\nE-Mail: florestone4185@internet.ru', True)
-    if call.data == 'youtube-download':
-        bot.edit_message_text(f'Введите ссылку на видео, пожалуйста.\n(Не советуем скачивать какие-то длинные видео.)', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
-        bot.register_next_step_handler(call.message, download_yt_func)
     if call.data == 'ban-video':
         bot.edit_message_text(f'Введи ID видео.', call.message.chat.id, call.message.id)
         bot.register_next_step_handler(call.message, ban_video_fl)
@@ -398,23 +368,25 @@ def pon(call: types.CallbackQuery):
         if not call.from_user.id in admins:
             bot.delete_message(call.message.chat.id, call.message.id)
             bot.clear_step_handler_by_chat_id(call.message.chat.id)
-            bot.send_message(call.message.chat.id, f'Утилиты бота.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Перевод текста на русский', callback_data='russian-perevod-txt'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url))))
+            bot.send_message(call.message.chat.id, f'Утилиты бота.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ песни с чартов', callback_data='download-audio-from-youtube')))
             users.remove(call.from_user.id)
             for __ in users:
                 bot.send_message(__, f'{call.from_user.first_name} ({call.from_user.id}) покинул(а) чат. Будем его(ее) ждать вновь!')
         else:
             bot.delete_message(call.message.chat.id, call.message.id)
             bot.clear_step_handler_by_chat_id(call.message.chat.id)
-            bot.send_message(call.message.chat.id, f'Утилиты бота.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Перевод текста на русский', callback_data='russian-perevod-txt'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url))))
+            bot.send_message(call.message.chat.id, f'Утилиты бота.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ песни с чартов', callback_data='download-audio-from-youtube')))
             users.remove(call.from_user.id)
     if call.data == 'tg-stars_callback':
         bot.delete_message(call.message.chat.id, call.message.id)
         bot.send_invoice(call.message.chat.id, 'Донат Флоресту', f'Привет, тут ты можешь задонатить Флоресту 50 звезд Telegram.\nЗаранее, спасибо за потраченные звезды и время на нас!', invoice_payload='telegram-stars-payment', prices=[types.LabeledPrice('Донат Флоресту', 50)], currency='XTR', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Задонить 50 звёзд⭐', pay=True)), provider_token='')
     if call.data == 'crypto-wallet':
         bot.delete_message(call.message.chat.id, call.message.id)
-        bot.send_message(call.message.chat.id, 'Мой крипто-кошелек Tonkeeper: `your-ton-keeper-wallet`.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')), parse_mode='Markdown')
+        bot.send_message(call.message.chat.id, 'Мой крипто-кошелек Tonkeeper: `UQCf3N6wGd1gLvVJ7aoZP2nXt7U0w2V1c8IdbORH6-Vlb8uJ`.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')), parse_mode='Markdown')
     if call.data == 'add_keyboard_admin_panel':
         bot.edit_message_text('Короч, введи ID поста для обработки.', call.message.chat.id, call.message.id, reply_markup=None)
         bot.register_next_step_handler(call.message, get_post_id)
+    if call.data == 'download-audio-from-youtube':
+        bot.edit_message_text(download_music(), call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
 
 bot.infinity_polling(3000)
