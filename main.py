@@ -384,7 +384,8 @@ def pon(call: types.CallbackQuery):
         bot.delete_message(call.message.chat.id, call.message.id)
         bot.send_message(call.message.chat.id, 'Мой крипто-кошелек Telegram (Ton Space, @wallet): `UQCWHkodQOQazxhCqX61pfcehapAXExrqdl9Lh5g3q9nYpJV`.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')), parse_mode='Markdown')
     if call.data == 'yoomoney-payment':
-        bot.edit_message_text('Мой ЮMoney кошелек: `4100118627934427`.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')), parse_mode='Markdown')
+        bot.delete_message(call.message.chat.id, call.message.id)
+        bot.send_message(call.message.chat.id, 'Мой ЮMoney кошелек: `4100118627934427`.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')), parse_mode='Markdown')
     if call.data == 'add_keyboard_admin_panel':
         bot.edit_message_text('Короч, введи ID поста для обработки.', call.message.chat.id, call.message.id, reply_markup=None)
         bot.register_next_step_handler(call.message, get_post_id)
