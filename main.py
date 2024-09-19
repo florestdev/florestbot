@@ -108,7 +108,7 @@ def admin_panel(message: types.Message):
 @bot.message_handler(commands=['donate'])
 def send_donate(message: types.Message):
     qr = path / 'qr-donations.jpg'
-    bot.send_photo(message.chat.id, qr.open('rb'), f'Привет! Данная функция нужна для того, чтобы Вы могли отправить деньги Флоресту.\nВоспользуйтесь QR кодом выше, либо кнопками ниже.', parse_mode='Markdown', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('DonationAlerts', url='https://donationalerts.com/r/florestdev4185'), types.InlineKeyboardButton('Звезды Telegram', callback_data='tg-stars_callback'), types.InlineKeyboardButton('Криптокошелек Tonkeeper', callback_data='crypto-wallet')))
+    bot.send_photo(message.chat.id, qr.open('rb'), f'Привет! Данная функция нужна для того, чтобы Вы могли отправить деньги Флоресту.\nВоспользуйтесь QR кодом выше, либо кнопками ниже.', parse_mode='Markdown', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('DonationAlerts', url='https://donationalerts.com/r/florestdev4185'), types.InlineKeyboardButton('Звезды Telegram', callback_data='tg-stars_callback'), types.InlineKeyboardButton('Криптокошелек Telegram (Ton Space)', callback_data='crypto-wallet'), types.InlineKeyboardButton('ЮMoney', callback_data='yoomoney-payment')))
 
 @bot.message_handler(content_types=['text'])
 def text_obrabbbb(message: types.Message):
@@ -295,7 +295,7 @@ def success_pay(message: types.Message):
 
 def add_keyboard(message: types.Message, id: str):
     try:
-        bot.edit_message_reply_markup(telegram_channel_id, int(id), reply_markup=quick_markup(eval(message.text)))
+        bot.edit_message_reply_markup(telegram_channel_id, int(id), reply_markup=quick_markup(eval(message.text), 1))
         bot.reply_to(message, f'Получилось!')
     except Exception as e:
         bot.reply_to(message, f'Трабл..\n{e}')
@@ -382,7 +382,9 @@ def pon(call: types.CallbackQuery):
         bot.send_invoice(call.message.chat.id, 'Донат Флоресту', f'Привет, тут ты можешь задонатить Флоресту 50 звезд Telegram.\nЗаранее, спасибо за потраченные звезды и время на нас!', invoice_payload='telegram-stars-payment', prices=[types.LabeledPrice('Донат Флоресту', 50)], currency='XTR', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Задонить 50 звёзд⭐', pay=True)), provider_token='')
     if call.data == 'crypto-wallet':
         bot.delete_message(call.message.chat.id, call.message.id)
-        bot.send_message(call.message.chat.id, 'Мой крипто-кошелек Tonkeeper: `UQCf3N6wGd1gLvVJ7aoZP2nXt7U0w2V1c8IdbORH6-Vlb8uJ`.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')), parse_mode='Markdown')
+        bot.send_message(call.message.chat.id, 'Мой крипто-кошелек Telegram (Ton Space, @wallet): `UQCWHkodQOQazxhCqX61pfcehapAXExrqdl9Lh5g3q9nYpJV`.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')), parse_mode='Markdown')
+    if call.data == 'yoomoney-payment':
+        bot.edit_message_text('Мой ЮMoney кошелек: `4100118627934427`.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')), parse_mode='Markdown')
     if call.data == 'add_keyboard_admin_panel':
         bot.edit_message_text('Короч, введи ID поста для обработки.', call.message.chat.id, call.message.id, reply_markup=None)
         bot.register_next_step_handler(call.message, get_post_id)
