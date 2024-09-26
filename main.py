@@ -409,5 +409,15 @@ def pon(call: types.CallbackQuery):
             bot.edit_message_reply_markup(call.message.chat.id, call.message.id, reply_markup=None)
         else:
             bot.answer_callback_query(call.id, f'Обманывать - не хорошо!', True)
+    if call.data == 'correct':
+        if check_sub(call.from_user.id):
+            bot.answer_callback_query(call.id, 'Пожалуйста, подпишитесь на данный Telegram канал для прохождения викторины.', True)
+        else:
+            bot.answer_callback_query(call.id, f'Поздравляем! Вы правильно ответили на вопрос викторины.', True)
+    if call.data == 'incorrect':
+        if check_sub(call.from_user.id):
+            bot.answer_callback_query(call.id, 'Пожалуйста, подпишитесь на данный Telegram канал для прохождения викторины.', True)
+        else:
+            bot.answer_callback_query(call.id, f'К сожалению, Вы проиграли. Попробуйте ввести другой вариант ответа.', True)
 
 bot.infinity_polling(3000)
