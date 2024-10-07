@@ -15,6 +15,7 @@ try:
     import io
     from telebot.util import quick_markup
     from PIL import Image
+    from bs4 import BeautifulSoup
 except ImportError:
     input(f'Нажмите Enter для установки нужных библиотек...')
     os.system('pip install -r requirements.txt')
@@ -190,19 +191,24 @@ def generate_qr__(message: types.Message):
 def get_weather(message: types.Message):
     if message.text:
         try:
-            response = requests.get(f'https://api.openweathermap.org/data/2.5/weather?q={message.text}&units=metric&lang=ru&appid=79d1ca96933b0328e1c7e3e7a26cb347', headers={"User-Agent": "(Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36)"}, verify=False, proxies=proxies).text
-            temperature = eval(response)['main']['temp']
-            wind = eval(response)['wind']['speed']
-            description = eval(response)['weather'][0]['description']
-            bot.reply_to(message, f'Состояние погоды в {message.text}:\nТемпература: {temperature} °C\nВетер: {wind} м/с\nОсадки: {description}', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-            bot.clear_step_handler_by_chat_id(message.chat.id)
+            req = requests.get(f'https://www.google.ru/search?q=погода+в+{message.text}', headers=headers_for_html_requests)
+            if req.status_code != 200:
+                bot.reply_to(message, f'Произошла ошибка при попытке отображения погоды.\nВы либо ввели некорректное название населенного пункта, либо что-то случилось с нашим API.\nИзвиняемся за неудобства!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back'), types.InlineKeyboardButton('Помощь', callback_data='help')))
+                bot.clear_step_handler_by_chat_id(message.chat.id)
+                send_reaction(message.chat.id, message.id, "🤷")
+            else:
+                soup = BeautifulSoup(req.text, "html.parser")
+                temperature = soup.select("#wob_tm")[0].getText()
+                title = soup.select("#wob_dc")[0].getText()
+                humidity = soup.select("#wob_hm")[0].getText()
+                time = soup.select("#wob_dts")[0].getText()
+                wind = soup.select("#wob_ws")[0].getText()
+                veroyatnost = soup.select("#wob_pp")[0].getText()
+                bot.reply_to(message, f'Результаты по Вашему населенному пункту.\nТемпература: `{temperature} °C`\nОписание погоды: `{title.lower()}`\nВлажность: `{humidity}`\nВремя прогноза: `{time.lower()}`\nВетер: `{wind.lower()}`\nВероятность осадков: `{veroyatnost}`', parse_mode='Markdown', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
         except:
-            bot.reply_to(message, f'Произошла ошибка при попытке отображения погоды.\nВы либо ввели некорректное название населенного пункта, либо API сервиса OpenWeatherMap крашнулся.\nИзвиняемся за неудобства!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back'), types.InlineKeyboardButton('Помощь', callback_data='help')))
+            bot.reply_to(message, f'Произошла ошибка при попытке отображения погоды.\nВы либо ввели некорректное название населенного пункта, либо что-то случилось с нашим API.\nИзвиняемся за неудобства!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back'), types.InlineKeyboardButton('Помощь', callback_data='help')))
             bot.clear_step_handler_by_chat_id(message.chat.id)
-            send_reaction(message.chat.id, message.id, "🤷")   
-    else:
-        bot.reply_to(message, f'Вы не отправили текстовое сообщение с названием Вашего города.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-        send_reaction(message.chat.id, message.id, "🤷")      
+            send_reaction(message.chat.id, message.id, "🤷")    
 
 def create_voice_by_text(message: types.Message):
     if not message.text:
