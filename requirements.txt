@@ -8,3 +8,4 @@ httpx==0.13.3
 curl_cffi==0.7.1
 gTTS==2.5.3
 pillow==10.4.0
+bs4==0.0.2
