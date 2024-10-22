@@ -9,3 +9,6 @@ curl_cffi==0.7.1
 gTTS==2.5.3
 pillow==10.4.0
 bs4==0.0.2
+google-api-python-client==2.120.0
+PySocks==1.7.1
+pytubefix==7.3.1
