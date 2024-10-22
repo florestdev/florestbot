@@ -92,18 +92,23 @@ def dialog_in_bot(message: types.Message) -> None:
         bot.register_next_step_handler(message, dialog_in_bot)
 
 def get_channel_details(message: types.Message):
-    msg=bot.reply_to(message, f'Обработка запроса, пожалуйста, подождите...')
-    try:
-        channel = Channel(message.text, proxies=proxies)
-        youtube = build('youtube', 'v3', developerKey=google_api_key)
-        request = youtube.channels().list(part='snippet,statistics', id=channel.channel_id)
-        response = request.execute()
-        response_photo = requests.get(f'{response["items"][0]["snippet"]["thumbnails"]["high"]["url"]}', headers=headers_for_html_requests, proxies=proxies)
-        bot.send_photo(message.chat.id, response_photo.content, caption=f'⚠️Информация и статистика о канале "`{response["items"][0]["snippet"]["title"]}`":\n\n**ИНФОРМАЦИЯ**\n🌐 Псевдоним: `{response["items"][0]["snippet"]["customUrl"]}`\n⛳ Страна: `{response["items"][0]["snippet"]["country"]}`\n\n**СТАТИСТИКА**\n👁️ Всего просмотров: `{response["items"][0]["statistics"]["viewCount"]}`\n♥️ Количество подписчиков: `{response["items"][0]["statistics"]["subscriberCount"]}`\n🎥 Количество видео на канале: `{response["items"][0]["statistics"]["videoCount"]}`\n🎥 Сколько плейлистов: `{str(len(channel.playlists))}`', parse_mode='MarkdownV2', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-        bot.delete_message(message.chat.id, msg.id)
-    except Exception as e:
-        print(e)
-        bot.edit_message_text(f'Произошла ошибка. Скорее всего данного канала не существует.', message.chat.id, msg.id, reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Назад', callback_data='back'), types.InlineKeyboardButton('Помощь', callback_data='help')))
+    if google_api_key != None:
+        msg=bot.reply_to(message, f'Обработка запроса, пожалуйста, подождите...')
+        try:
+            channel = Channel(message.text, proxies=proxies)
+            youtube = build('youtube', 'v3', developerKey=google_api_key)
+            request = youtube.channels().list(part='snippet,statistics', id=channel.channel_id)
+            response = request.execute()
+            response_photo = requests.get(f'{response["items"][0]["snippet"]["thumbnails"]["high"]["url"]}', headers=headers_for_html_requests, proxies=proxies)
+            bot.send_photo(message.chat.id, response_photo.content, caption=f'⚠️Информация и статистика о канале "`{response["items"][0]["snippet"]["title"]}`":\n\n**ИНФОРМАЦИЯ**\n🌐 Псевдоним: `{response["items"][0]["snippet"]["customUrl"]}`\n⛳ Страна: `{response["items"][0]["snippet"]["country"]}`\n\n**СТАТИСТИКА**\n👁️ Всего просмотров: `{response["items"][0]["statistics"]["viewCount"]}`\n♥️ Количество подписчиков: `{response["items"][0]["statistics"]["subscriberCount"]}`\n🎥 Количество видео на канале: `{response["items"][0]["statistics"]["videoCount"]}`\n🎥 Сколько плейлистов: `{str(len(channel.playlists))}`', parse_mode='MarkdownV2', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+            bot.delete_message(message.chat.id, msg.id)
+        except Exception as e:
+            print(e)
+            bot.reply_to(message, f'Произошла ошибка. Скорее всего данного канала не существует.', message.chat.id, msg.id, reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Назад', callback_data='back'), types.InlineKeyboardButton('Помощь', callback_data='help')))
+            bot.delete_message(message.chat.id, msg.id)
+    else:
+        bot.reply_to(message, f'Произошла ошибка. Проверьте консоль, чтобы ее узнать.')
+        print(f'Привет, братец!\nДля использования данной функции нам нужен Google APIs ключ.\nПодробней узнайте в config.py\nСпасибо за прочтение!')
 
 
 def make_black_image(message: types.Message):
