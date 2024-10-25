@@ -14,7 +14,7 @@ try:
     from gtts import gTTS
     import io
     from telebot.util import quick_markup
-    from PIL import Image
+    from PIL import Image, ImageDraw, ImageFont, ImageOps
     from bs4 import BeautifulSoup
     from googleapiclient.discovery import build
     from pytubefix import Channel, YouTube
@@ -27,6 +27,62 @@ bot = TeleBot(token=token)
 path = pathlib.Path(sys.argv[0]).parent.resolve()
 users = []
 admins = [7455363246]
+
+def create_demotivator_with_pillow(image: io.BytesIO, text: str):
+    img = Image.new('RGB', (1280, 1024), color='black')
+    img_border = Image.new('RGB', (1060, 720), color='#000000')
+    border = ImageOps.expand(img_border, border=2, fill='#ffffff')
+    user_img = Image.open(image).convert("RGBA").resize((1050, 710))
+    (width, height) = user_img.size
+    img.paste(border, (111, 96))
+    img.paste(user_img, (118, 103))
+    drawer = ImageDraw.Draw(img)
+    font_1 = ImageFont.truetype(font='times.ttf', size=80, encoding='UTF-8')
+    text_width = font_1.getlength(water_sign)
+
+    while text_width >= (width + 250) - 20:
+        font_1 = ImageFont.truetype(font='times.ttf', size=80, encoding='UTF-8')
+        text_width = font_1.getlength(water_sign)
+        top_size -= 1
+
+    font_2 = ImageFont.truetype(font='times.ttf', size=60, encoding='UTF-8')
+    text_width = font_2.getlength(text)
+
+    while text_width >= (width + 250) - 20:
+        font_2 = ImageFont.truetype(font='times.ttf', size=60, encoding='UTF-8')
+        text_width = font_2.getlength(text)
+        bottom_size -= 1
+
+    size_1 = drawer.textlength(water_sign, font=font_1)
+    size_2 = drawer.textlength(text, font=font_2)
+
+    drawer.text(((1280 - size_1) / 2, 840), water_sign, fill='white', font=font_1)
+    drawer.text(((1280 - size_2) / 2, 930), text, fill='white', font=font_2)
+
+    result_here = io.BytesIO()
+
+    img.save(result_here, 'JPEG')
+    
+    del drawer
+
+    return result_here.getvalue()
+
+
+def make_demotivator(message: types.Message, file: bytes):
+    if not message.text:
+        bot.reply_to(message, f'{message.from_user.first_name}, мы принимаем только текстовые сообщения в данном аргументе.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+    else:
+        bot.send_photo(message.chat.id, create_demotivator_with_pillow(io.BytesIO(file), message.text), caption=f'Ваш демотиватор.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+
+def image_priem_to_demotivator(message: types.Message):
+    if not message.document:
+        bot.reply_to(message, f'{message.from_user.first_name}, мы принимаем только одно изображение без сжатия.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+    else:
+        if message.document.file_name[-4:] not in ['.jpg', '.png']:
+            bot.reply_to(message, f'{message.from_user.first_name}, данная функция принимает файлы с разрешением `.png` и `.jpg`.', parse_mode='Markdown', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+        else:
+            bot.send_message(message.chat.id, 'Спс. А теперь напиши текст, который будет в демотиваторе.')
+            bot.register_next_step_handler(message, make_demotivator, bot.download_file(bot.get_file(message.document.file_id).file_path))
 
 def download_video_func___(message: types.Message, url: str):
     if message.text == 'Видео':
@@ -216,7 +272,7 @@ def welcome(message: types.Message):
         button31 = types.InlineKeyboardButton('Другие ресурсы Флореста', url='https://taplink.cc/florestone4185')
         markup1.add(button1, button21, button31)
         bot.send_message(message.chat.id, f'Добро пожаловать в бота Флореста.\nВсе функции находятся в меню ниже.', reply_markup=markup1)
-        msg=bot.send_message(message.chat.id, f'Утилиты бота', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ песни с чартов', callback_data='download-audio-from-youtube'), types.InlineKeyboardButton('Затемнить фотографию', callback_data='black-photo-make', types.InlineKeyboardButton('Подробная информация о YouTube канале', callback_data='full_info_yt'), types.InlineKeyboardButton('Скачать видео с YouTube', callback_data='download-video-from-yt'))))
+        msg=bot.send_message(message.chat.id, f'Утилиты бота', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ песни с чартов', callback_data='download-audio-from-youtube'), types.InlineKeyboardButton('Затемнить фотографию', callback_data='black-photo-make', types.InlineKeyboardButton('Подробная информация о YouTube канале', callback_data='full_info_yt'), types.InlineKeyboardButton('Скачать видео с YouTube', callback_data='download-video-from-yt'), types.InlineKeyboardButton('Создать демотиватор', callback_data='demotivator-create'))))
         bot.reply_to(msg, f'На будущее, вдруг меню пропадет.', reply_markup=types.ReplyKeyboardMarkup(True).add(types.KeyboardButton('🏡В меню')))
     else:
         bot.reply_to(message, f'Ты не подписался на Telegram канал создателя?\nПора-бы это сделать!', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Мой Telegram канал', 'https://t.me/florestchannel'), types.InlineKeyboardButton('Подтвердить подписку', callback_data='check_sub')))
@@ -255,7 +311,7 @@ def send_donate(message: types.Message):
 def text_obrabbbb(message: types.Message):
     if message.text == '🏡В меню':
         if check_sub(message.from_user.id):
-            bot.send_message(message.chat.id, f'Утилиты бота', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ песни с чартов', callback_data='download-audio-from-youtube'), types.InlineKeyboardButton('Затемнить фотографию', callback_data='black-photo-make')types.InlineKeyboardButton('Подробная информация о YouTube канале', callback_data='full_info_yt'), types.InlineKeyboardButton('Скачать видео с YouTube', callback_data='download-video-from-yt'))))
+            bot.send_message(message.chat.id, f'Утилиты бота', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ песни с чартов', callback_data='download-audio-from-youtube'), types.InlineKeyboardButton('Затемнить фотографию', callback_data='black-photo-make')types.InlineKeyboardButton('Подробная информация о YouTube канале', callback_data='full_info_yt'), types.InlineKeyboardButton('Скачать видео с YouTube', callback_data='download-video-from-yt'), types.InlineKeyboardButton('Создать демотиватор', callback_data='demotivator-create'))))
         else:
             bot.reply_to(message, f'Ты не подписался на Telegram канал создателя?\nПора-бы это сделать!', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Мой Telegram канал', 'https://t.me/florestchannel'), types.InlineKeyboardButton('Подтвердить подписку', callback_data='check_sub')))
     else:
@@ -458,7 +514,7 @@ def pon(call: types.CallbackQuery):
     if call.data == 'otmena_galya':
         bot.delete_message(call.message.chat.id, call.message.id)
         bot.clear_step_handler_by_chat_id(call.message.chat.id)
-        bot.send_message(call.message.chat.id, f'Утилиты бота.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'),  types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ песни с чартов', callback_data='download-audio-from-youtube'), types.InlineKeyboardButton('Затемнить фотографию', callback_data='black-photo-make')types.InlineKeyboardButton('Подробная информация о YouTube канале', callback_data='full_info_yt'), types.InlineKeyboardButton('Скачать видео с YouTube', callback_data='download-video-from-yt'))))
+        bot.send_message(call.message.chat.id, f'Утилиты бота.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'),  types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ песни с чартов', callback_data='download-audio-from-youtube'), types.InlineKeyboardButton('Затемнить фотографию', callback_data='black-photo-make')types.InlineKeyboardButton('Подробная информация о YouTube канале', callback_data='full_info_yt'), types.InlineKeyboardButton('Скачать видео с YouTube', callback_data='download-video-from-yt'), types.InlineKeyboardButton('Создать демотиватор', callback_data='demotivator-create'))))
     if call.data == 'chat_zaversit':
         bot.send_message(call.message.chat.id, f'Было приятно с Вами пообщаться! Если захотите еще, то нажмите на кнопку в команде `/start`.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
         bot.clear_step_handler_by_chat_id(call.message.chat.id)
@@ -486,7 +542,7 @@ def pon(call: types.CallbackQuery):
         bot.register_next_step_handler(call.message, create_voice_by_text)
     if call.data == 'back':
         bot.edit_message_reply_markup(call.message.chat.id, call.message.id, reply_markup=None)
-        bot.send_message(call.message.chat.id, f'Утилиты бота.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ чартов', callback_data='download-audio-from-youtube'), types.InlineKeyboardButton('Затемнить фотографию', callback_data='black-photo-make'), types.InlineKeyboardButton('Подробная информация о YouTube канале', callback_data='full_info_yt'), types.InlineKeyboardButton('Скачать видео с YouTube', callback_data='download-video-from-yt'))))
+        bot.send_message(call.message.chat.id, f'Утилиты бота.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ чартов', callback_data='download-audio-from-youtube'), types.InlineKeyboardButton('Затемнить фотографию', callback_data='black-photo-make'), types.InlineKeyboardButton('Подробная информация о YouTube канале', callback_data='full_info_yt'), types.InlineKeyboardButton('Скачать видео с YouTube', callback_data='download-video-from-yt'), types.InlineKeyboardButton('Создать демотиватор', callback_data='demotivator-create'))))
     if call.data == 'help':
         bot.answer_callback_query(call.id, f'Привет!\nДля помощи по боту, Вам нужно связаться с его создателем (Флорестом).\nДержите его социальные сети!\nTelegram: @florestone4185\nDiscord: florestone4185\nE-Mail: florestone4185@internet.ru', True)
     if call.data == 'ban-video':
@@ -517,14 +573,14 @@ def pon(call: types.CallbackQuery):
         if not call.from_user.id in admins:
             bot.delete_message(call.message.chat.id, call.message.id)
             bot.clear_step_handler_by_chat_id(call.message.chat.id)
-            bot.send_message(call.message.chat.id, f'Утилиты бота.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ песни с чартов', callback_data='download-audio-from-youtube'), types.InlineKeyboardButton('Затемнить фотографию', callback_data='black-photo-make'), types.InlineKeyboardButton('Подробная информация о YouTube канале', callback_data='full_info_yt'), types.InlineKeyboardButton('Скачать видео с YouTube', callback_data='download-video-from-yt'))))
+            bot.send_message(call.message.chat.id, f'Утилиты бота.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ песни с чартов', callback_data='download-audio-from-youtube'), types.InlineKeyboardButton('Затемнить фотографию', callback_data='black-photo-make'), types.InlineKeyboardButton('Подробная информация о YouTube канале', callback_data='full_info_yt'), types.InlineKeyboardButton('Скачать видео с YouTube', callback_data='download-video-from-yt'), types.InlineKeyboardButton('Создать демотиватор', callback_data='demotivator-create'))))
             users.remove(call.from_user.id)
             for __ in users:
                 bot.send_message(__, f'{call.from_user.first_name} ({call.from_user.id}) покинул(а) чат. Будем его(ее) ждать вновь!')
         else:
             bot.delete_message(call.message.chat.id, call.message.id)
             bot.clear_step_handler_by_chat_id(call.message.chat.id)
-            bot.send_message(call.message.chat.id, f'Утилиты бота.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ песни с чартов', callback_data='download-audio-from-youtube'), types.InlineKeyboardButton('Затемнить фотографию', callback_data='black-photo-make'), types.InlineKeyboardButton('Подробная информация о YouTube канале', callback_data='full_info_yt'), types.InlineKeyboardButton('Скачать видео с YouTube', callback_data='download-video-from-yt'))))
+            bot.send_message(call.message.chat.id, f'Утилиты бота.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Разговор с ChatGPT', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Групповой чат [BETA]', callback_data='group-chat-beta'), types.InlineKeyboardButton('Сыграть в кликер [NEW]', web_app=types.WebAppInfo(url)), types.InlineKeyboardButton('Топ песни с чартов', callback_data='download-audio-from-youtube'), types.InlineKeyboardButton('Затемнить фотографию', callback_data='black-photo-make'), types.InlineKeyboardButton('Подробная информация о YouTube канале', callback_data='full_info_yt'), types.InlineKeyboardButton('Скачать видео с YouTube', callback_data='download-video-from-yt'), types.InlineKeyboardButton('Создать демотиватор', callback_data='demotivator-create'))))
             users.remove(call.from_user.id)
     if call.data == 'tg-stars_callback':
         bot.delete_message(call.message.chat.id, call.message.id)
