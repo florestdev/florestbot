@@ -13,3 +13,4 @@ google-api-python-client==2.120.0
 PySocks==1.7.1
 pytubefix==7.3.1
 phonenumbers==8.13.34
+faker==30.3.0
