@@ -47,19 +47,26 @@ def deanonchik_photo(message: types.Message) -> None:
             lat_ref = gps_info[3]
             latitude = (lat[0] + lat[1] / 60.0 + lat[2] / 3600.0)
             longitude = (lon[0] + lon[1] / 60.0 + lon[2] / 3600.0)
+            datetime_original = metadata.get(36867)
             try:
                 if lat_ref != 'E':
                     latitude = -latitude
                 r = requests.get(f"https://nominatim.openstreetmap.org/reverse?lat={latitude}&lon={longitude}&format=json", headers={"Accept-Language":"ru-RU", "User-Agent":"FlorestApplication"}, proxies=proxies)
                 json = r.json()
-                bot.reply_to(message, f'Страна: {json["address"]["country"]}\nРегион: {json["address"]["state"]}\nРайон: {json["address"]["district"]}\nГород: {json["address"]["city"]}\nРеальный адрес: {json["display_name"]}\nПочтовый индекс: {json["address"]["postcode"]}', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+                if datetime_original:
+                    bot.reply_to(message, f'Страна: {json["address"]["country"]}\nРегион: {json["address"]["state"]}\nРайон: {json["address"]["district"]}\nГород: {json["address"]["city"]}\nРеальный адрес: {json["display_name"]}\nПочтовый индекс: {json["address"]["postcode"]}\nВремя съемки: {datetime_original}', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+                else:
+                    bot.reply_to(message, f'Страна: {json["address"]["country"]}\nРегион: {json["address"]["state"]}\nРайон: {json["address"]["district"]}\nГород: {json["address"]["city"]}\nРеальный адрес: {json["display_name"]}\nПочтовый индекс: {json["address"]["postcode"]}\nВремя съемки неизвестно.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
             except:
                 if lat_ref != 'E':
                     latitude = -latitude
                 longitude = -longitude
                 r = requests.get(f"https://nominatim.openstreetmap.org/reverse?lat={latitude}&lon={longitude}&format=json", headers={"Accept-Language":"ru-RU", "User-Agent":"FlorestApplication"}, proxies=proxies)
                 json = r.json()
-                bot.reply_to(message, f'Страна: {json["address"]["country"]}\nРегион: {json["address"]["state"]}\nРайон: {json["address"]["district"]}\nГород: {json["address"]["city"]}\nРеальный адрес: {json["display_name"]}\nПочтовый индекс: {json["address"]["postcode"]}', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+                if datetime_original:
+                    bot.reply_to(message, f'Страна: {json["address"]["country"]}\nРегион: {json["address"]["state"]}\nРайон: {json["address"]["district"]}\nГород: {json["address"]["city"]}\nРеальный адрес: {json["display_name"]}\nПочтовый индекс: {json["address"]["postcode"]}\nВремя съемки: {datetime_original}', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+                else:
+                    bot.reply_to(message, f'Страна: {json["address"]["country"]}\nРегион: {json["address"]["state"]}\nРайон: {json["address"]["district"]}\nГород: {json["address"]["city"]}\nРеальный адрес: {json["display_name"]}\nПочтовый индекс: {json["address"]["postcode"]}\nВремя съемки неизвестно.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
 
 def generate_human():
     faker = faker_.Faker('ru-RU')
