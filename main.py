@@ -441,7 +441,7 @@ def ai_obrabotchik(message: types.Message, type: int):
         headers = {
             'Content-Type': 'application/x-www-form-urlencoded',
             'Accept': 'application/json',
-            'RqUID': 'd17b9acc-2add-400e-8a3e-ff5a632ce31f',
+            'RqUID': f'{gigachat_id}',
             'Authorization': f'Basic {gigachat_token}'
         }
 
