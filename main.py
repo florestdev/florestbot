@@ -426,9 +426,62 @@ def support(message: types.Message):
 
 def ai_obrabotchik(message: types.Message, type: int):
     if type == 1:
-        bot.send_chat_action(message.chat.id, 'upload_photo')
-        bot.send_photo(message.chat.id, api.ai_image(message.text), 'Изображение по Вашему запросу.\nМогут быть неточности. Если они присутствуют, попробуйте изменить язык на котором вы пишите запрос, или его формуляровку.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-        bot.clear_step_handler_by_chat_id(message.chat.id)
+        import requests, re, pathlib, sys
+        url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
+
+        payload={
+            'scope': 'GIGACHAT_API_PERS'
+        }
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json',
+            'RqUID': f'{gigachat_id}',
+            'Authorization': f'Basic {gigachat_token}'
+        }
+
+        response = requests.request("POST", url, headers=headers, data=payload, verify=False)
+
+        access_token = response.json()['access_token']
+
+        headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': f'Bearer {access_token}'
+        }
+
+        data = {
+            "model": "GigaChat",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Glory to Florest."
+                },
+                {
+                    "role": "user",
+                    "content": message.text
+                }
+            ],
+            "function_call": "auto"
+        }
+
+        patterns = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+
+        response = requests.post(
+            'https://gigachat.devices.sberbank.ru/api/v1/chat/completions',
+            headers=headers,
+            json=data,
+            verify=False
+        )
+        json = response.json()
+        matches = re.search(patterns, json['choices'][0]['message']['content'])
+        if not matches:
+            bot.reply_to(message, f"Нельзя создать изображение по данному запросу. Причина: {json['choices'][0]['message']['content'].lower()}", reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад',callback_data='back')))
+        else:
+            match_ = matches.group(0)
+            req_img = requests.get(f"https://gigachat.devices.sberbank.ru/api/v1/files/{match_}/content", headers={'Accept': 'application/jpg', "Authorization":f"Bearer {access_token}"}, verify=False, stream=True)
+            bot.send_chat_action(message.chat.id, 'upload_photo')
+            bot.send_photo(message.chat.id, req_img.content, 'Изображение по Вашему запросу.\nМогут быть неточности. Если они присутствуют, попробуйте изменить язык на котором вы пишите запрос, или его формуляровку.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+            bot.clear_step_handler_by_chat_id(message.chat.id)
     if type == 2:
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
