@@ -8,3 +8,7 @@ headers_for_html_requests = {'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; 
 google_api_key = None # Сюда введите токен от Google APIs для того, чтобы можно было узнать данные о канале, или узнать данные о видео при скачивании. Токен можно получить тут: https://developers.google.com/identity/oauth2/web/guides/get-google-api-clientid (заходить с VPN)
 gigachat_token = '' # токен от GigaChat API (ПАО "СберБанк")
 gigachat_id = '' # ID клиента GigaChat.
+username_mail = '' # ваша почта для работы с SMTP сервером.
+passwd_mail = '' # пароль от SMTP сервера.
+service_smtp = '' # провайдер SMTP сервера. Пример: smtp.mail.ru
+service_smtp_port = 0 # порт SMTP сервера. Пример: 465 (для Mail.ru)
