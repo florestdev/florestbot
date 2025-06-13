@@ -14,6 +14,7 @@ under_gif = '...'
 water_sign = '@postbotflorestbot'
 maintenance = {"work":False, "reason":"Технические работы.", "time":"неизвестно"}
 group_id = -1002184607448
+gigachat_id = '...'
 gigachat_token = '...'
 username_mail = '...'
 passwd_mail = '...'
