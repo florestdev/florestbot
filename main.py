@@ -54,9 +54,6 @@ ai_btns = types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton
 youtube_btns = types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Подробная информация о YouTube канале', callback_data='full_info_yt'), types.InlineKeyboardButton('Скачать видео с YouTube', callback_data='download-video-from-yt'), types.InlineKeyboardButton('Найти видео по названию', callback_data='search_youtube_video'), types.InlineKeyboardButton('Назад', callback_data='back_to_menu'))
 games = types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сыграть в кликер', web_app=types.WebAppInfo('https://florestdev.github.io/clicker-html/')), types.InlineKeyboardButton("Змейка [NEW]", web_app=types.WebAppInfo("https://florestdev.github.io/snake-html/")), types.InlineKeyboardButton("Назад", callback_data="back_to_menu"))
 
-telebot.apihelper.proxy = {'http':'http://Qh0wG0:eqJZ4z@185.104.148.124:8000'}
-
-
 def info_about_minecraft_server(message: types.Message):
     try:
         server = JavaServer(message.text)
