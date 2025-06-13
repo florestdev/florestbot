@@ -19,5 +19,5 @@ gigachat_token = '...'
 username_mail = '...'
 passwd_mail = '...'
 virustotal_apikey = "..."
-useragent_for_vk = 'KateMobileAndroid/56 lite-460 (Android 4.4.2; SDK 19; x86; unknown Android SDK built for x86; en)'
+vk_useragent = 'KateMobileAndroid/56 lite-460 (Android 4.4.2; SDK 19; x86; unknown Android SDK built for x86; en)'
 token_for_vk = '...'
