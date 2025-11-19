@@ -1,28 +1,33 @@
-# задаем базовый образ (вместо 3.8 можно указать другую версию Python)
+# Use a more minimal base image if possible, but python:3.10 is fine for this example.
 FROM python:3.10
 
-# устанавливаем google-chrome
-RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
-RUN sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
-RUN apt-get -y update
-RUN apt-get install -y google-chrome-stable
-
-WORKDIR /app
-COPY requirements.txt .
-
-RUN pip install --no-cache-dir -r requirements.txt
-
+# Install dependencies for Google Chrome and the rest of your app
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3.10 \
-    chromium \
-    ca-certificates \
     wget \
+    gnupg \
+    ca-certificates \
     ffmpeg \
     g++ \
+    espeak \
+    libespeak1 \
+    # Clean up to keep the image small
     && rm -rf /var/lib/apt/lists/*
 
+# Add Google Chrome's GPG key and repository using the new method
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg
+RUN echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
+
+# Install Google Chrome
+RUN apt-get update
+RUN apt-get install -y google-chrome-stable
+
+# --- Your application's original setup continues here ---
+WORKDIR /app
+COPY requirements.txt .
+RUN python -m pip install --upgrade pip
+RUN pip install --ignore-installed --default-timeout=100 -r requirements.txt
 COPY . .
 CMD ["python", "main.py"]
 
-# выставляем нужный порт дисплея
+# Set the display port
 ENV DISPLAY=:99
