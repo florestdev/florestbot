@@ -1,69 +1,1068 @@
 # -*- coding: utf-8 -*-
-import os
-try:
-  import telebot, asyncio, aiohttp
-  from telebot import TeleBot, types
-  import time, pathlib, sys, logging
-  import random, os
-  from config import *
-  from qrcode import make as create_qr
-  import string, requests, threading
-  from gtts import gTTS
-  import io
-  from telebot.util import quick_markup
-  from PIL import Image, ImageDraw, ImageFont, ImageOps
-  from bs4 import BeautifulSoup
-  from googleapiclient.discovery import build
-  from pytubefix import Channel, YouTube, Search
-  import faker as faker_
-  from datetime import date
-  from email.mime.multipart import MIMEMultipart
-  from email.mime.text import MIMEText
-  import smtplib
-  import hashlib
-  from virus_total_apis import PublicApi as VirusTotalPublicApi
-  import speech_recognition as sr
-  import subprocess
-  from vkpymusic import Service, TokenReceiver, Song
-  import vk_api
-  from googletrans import Translator
-  import zipfile, shutil
-  from selenium import webdriver
-  from selenium.webdriver.common.by import By
-  from selenium.webdriver.chrome.service import Service as Service1
-  from selenium.webdriver.chrome.options import Options
-  from webdriver_manager.chrome import ChromeDriverManager
-  from tqdm.asyncio import tqdm
-  import numpy
-  import cv2
-  from yoloface import face_analysis
-  from mcstatus import JavaServer
-  import base64
-except ImportError:
-  os.system('pip install -r requirements.txt')
+import g4f.Provider
+import telebot, asyncio, aiohttp
+from telebot import TeleBot, types
+import time, pathlib, sys, logging
+import random, os
+from config import *
+from qrcode import make as create_qr
+import string, requests, threading
+import io
+from gtts import gTTS
+from telebot.util import quick_markup
+from PIL import Image, ImageDraw, ImageFont, ImageOps
+from bs4 import BeautifulSoup
+from googleapiclient.discovery import build
+from pytubefix import Channel, YouTube, Search, Playlist
+import xml.etree.ElementTree as ET
+import faker as faker_
+from datetime import date
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import smtplib
+import hashlib
+from virus_total_apis import PublicApi as VirusTotalPublicApi
+import speech_recognition as sr
+import subprocess
+from vkpymusic import Service, TokenReceiver, Song
+import vk_api
+import zipfile, shutil
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service as Service1
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+from tqdm.asyncio import tqdm
+import numpy
+import cv2
+from yoloface import face_analysis
+from mcstatus import JavaServer
+import base64
+from g4f.client import Client
+import g4f
+from g4f.Provider import OIVSCodeSer2, Blackbox, Chatai, LegacyLMArena, PollinationsAI, RetryProvider, ARTA, PollinationsImage, DeepInfraChat
+from g4f.Provider.Together import Together
+import pyttsx3
+from tqdm import tqdm as sync_tqdm
+import tqdm
+import yt_dlp
+from moviepy import VideoFileClip
+from telethon.sync import TelegramClient
+import socks
+import pandas as pd
+from telethon.errors import FloodWaitError
+from telethon.types import UserStatusRecently, UserStatusEmpty, UserStatusLastMonth, UserStatusLastWeek, UserStatusOnline, UserStatusOffline
+from datetime import datetime
+from openai import OpenAI
+import json
+from typing import Any, Dict
+import feedparser
+from newspaper import Article
+
+def _format_value(value: Any, indent: int = 0) -> str:
+    """Рекурсивно форматирует любое значение для отчёта."""
+    pad = "    " * indent  # 4 пробела на уровень
+    if isinstance(value, dict):
+        if not value:
+            return f"{pad}- (пусто)"
+        lines = []
+        for k, v in value.items():
+            lines.append(f"{pad}{k}:")
+            lines.append(_format_value(v, indent + 1))
+        return "\n".join(lines)
+    elif isinstance(value, list):
+        if not value:
+            return f"{pad}- (пусто)"
+        lines = []
+        for i, item in enumerate(value, 1):
+            lines.append(f"{pad}- [{i}]")
+            lines.append(_format_value(item, indent + 1))
+        return "\n".join(lines)
+    else:
+        return f"{pad}{value if value not in [None, ''] else '(нет данных)'}"
+
+def parse_vk_user_data(data: Dict[str, Any]) -> str:
+    """Создает подробный текстовый отчет из профиля ВКонтакте."""
+    if not isinstance(data, dict):
+        raise TypeError("Аргумент должен быть словарём.")
+
+    id_ = data.get("id")
+    first_name = data.get("first_name", "(нет имени)")
+    last_name = data.get("last_name", "(нет фамилии)")
+    domain = data.get("domain", f"id{id_}")
+    profile_link = f"https://vk.com/{domain}"
+
+    report = [
+        f"👤 Профиль VK: {first_name} {last_name}",
+        f"🔗 Ссылка: {profile_link}",
+        f"🆔 ID: {id_}",
+        ""
+    ]
+
+    # Пробегаемся по всем полям (чтобы ничего не пропустить)
+    for key, value in sorted(data.items()):
+        # Пропускаем уже выведенные поля
+        if key in {"id", "first_name", "last_name", "domain"}:
+            continue
+        report.append(f"▶ {key}: {_format_value(value, 1)}")
+        report.append("")
+
+    return "\n".join(report)
 
 bot = TeleBot(token=token)
 path = pathlib.Path(sys.argv[0]).parent.resolve()
 users = []
 admins = [7455363246]
-buttons = types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Генерация информации, паролей и т.д.', callback_data='gen_info-btns'), types.InlineKeyboardButton('Деанончик', callback_data='deanon_btns'), types.InlineKeyboardButton('Утилиты', callback_data='utilits_btns'), types.InlineKeyboardButton('ИИ, текст в речь, картинки', callback_data='ai_btns'), types.InlineKeyboardButton('Функции YouTube', callback_data='youtube_funcs_btns'), types.InlineKeyboardButton('Игры', callback_data='games'))
-gen_info_btns = types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Топ песни с чартов', callback_data='download-audio-from-youtube'),  types.InlineKeyboardButton('Цена крипты', callback_data='crypto-price'), types.InlineKeyboardButton('Проверить пароль на утечки', callback_data='password_check'), types.InlineKeyboardButton('Подобрать нитро', callback_data='nitro-generator'), types.InlineKeyboardButton('Фейковая личность', callback_data='fake_human'), types.InlineKeyboardButton('Назад', callback_data='back_to_menu'))
+buttons = types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Генерация информации, паролей и т.д.', callback_data='gen_info-btns'), types.InlineKeyboardButton('Деанончик', callback_data='deanon_btns'), types.InlineKeyboardButton('Утилиты', callback_data='utilits_btns'), types.InlineKeyboardButton('ИИ, текст в речь, картинки', callback_data='ai_btns'), types.InlineKeyboardButton('Парсеры', callback_data='youtube_funcs_btns'), types.InlineKeyboardButton('Игры', callback_data='games'))
+gen_info_btns = types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сгенерировать QR код', callback_data='generate_qr'), types.InlineKeyboardButton('Сгенирировать пароль', callback_data='generate_password'), types.InlineKeyboardButton('Топ песни с чартов', callback_data='download-audio-from-youtube'),  types.InlineKeyboardButton('Цена крипты', callback_data='crypto-price'), types.InlineKeyboardButton('Проверить пароль на утечки', callback_data='password_check'), types.InlineKeyboardButton('Фейковая личность', callback_data='fake_human'), types.InlineKeyboardButton('Назад', callback_data='back_to_menu'))
 deanon_btns = types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Информация по IP', callback_data='information_about_ip'), types.InlineKeyboardButton('Деанон по фото', callback_data='deanon_by_photo'), types.InlineKeyboardButton('Назад', callback_data='back_to_menu'))
-utilits_btns = types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Затемнить фотографию', callback_data='black-photo-make'), types.InlineKeyboardButton('Создать демотиватор', callback_data='demotivator-create'), types.InlineKeyboardButton('Предложить новость', callback_data='predloshka'), types.InlineKeyboardButton('Узнать ИМТ', callback_data='imt_check'), types.InlineKeyboardButton('Написать пользователю без ника', callback_data='write_to_user_without_nickname'), types.InlineKeyboardButton('Отправить письмо через бота', callback_data='send-mail-by-bot'), types.InlineKeyboardButton('Рассылка по E-Mail', callback_data='make-email-rassylka'), types.InlineKeyboardButton('Проверка на вирусы', callback_data='virus-check'), types.InlineKeyboardButton('Парсинг сайта', callback_data='parsing-site'), types.InlineKeyboardButton('Парсинг Google фото', callback_data='google-photo-parsing'), types.InlineKeyboardButton('C++ компилятор', callback_data='cpp_compiler'), types.InlineKeyboardButton('Скачать музыку с VK', callback_data='vk_music_download'), types.InlineKeyboardButton('Последний пост в VK', callback_data='last_post_vk'), types.InlineKeyboardButton('Парсер Yandex (BETA)', callback_data='yandex_beta_parse'), types.InlineKeyboardButton('Пикселизация лица (APLHA)', callback_data='make-face-pixel-censor'), types.InlineKeyboardButton('Создать стикер-пак [NEW]', callback_data='create-sticker-pack-with-florestik'), types.InlineKeyboardButton('Получить API-токен', callback_data='get-api-token'), types.InlineKeyboardButton('Информация о Minecraft-сервере', callback_data='info-about-minecraft-server'), types.InlineKeyboardButton('Назад', callback_data='back_to_menu'))
-ai_btns = types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Разговор с GigaChat', callback_data='ai-text'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Из речи в текст', callback_data='speech-to-text'), types.InlineKeyboardButton('Назад', callback_data='back_to_menu'))
-youtube_btns = types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Подробная информация о YouTube канале', callback_data='full_info_yt'), types.InlineKeyboardButton('Скачать видео с YouTube', callback_data='download-video-from-yt'), types.InlineKeyboardButton('Найти видео по названию', callback_data='search_youtube_video'), types.InlineKeyboardButton('Назад', callback_data='back_to_menu'))
+utilits_btns = types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Погода', callback_data='weather-info'), types.InlineKeyboardButton('Затемнить фотографию', callback_data='black-photo-make'), types.InlineKeyboardButton('Создать демотиватор', callback_data='demotivator-create'), types.InlineKeyboardButton('Предложить новость', callback_data='predloshka'), types.InlineKeyboardButton('Узнать ИМТ', callback_data='imt_check'), types.InlineKeyboardButton('Отправить письмо через бота', callback_data='send-mail-by-bot'), types.InlineKeyboardButton('Рассылка по E-Mail', callback_data='make-email-rassylka'), types.InlineKeyboardButton('Проверка на вирусы', callback_data='virus-check'), types.InlineKeyboardButton('Добавить водяной знак (текст)', callback_data='add_watermark_on_photo'), types.InlineKeyboardButton('Сократить ссылку (clck.ru)', callback_data='cut-link-clck-yandex'), types.InlineKeyboardButton('Разархивировать APK | JAR', callback_data='unzip_apk_or_jar'), types.InlineKeyboardButton('Из .zip в .apk', callback_data='from-zip-to-apk'), types.InlineKeyboardButton('Конвертация изображений', callback_data='img-format-convertation'), types.InlineKeyboardButton('Назад', callback_data='back_to_menu'))
+ai_btns = types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Разговор с GPT-4o', callback_data='ai-text'), types.InlineKeyboardButton('Разговор с DeepSeek-v3', callback_data='deepseek-ai-usage'), types.InlineKeyboardButton('Нарисовать изображение', callback_data='ai-image'), types.InlineKeyboardButton('Из текста в речь', callback_data='text-to-speech'), types.InlineKeyboardButton('Из речи в текст', callback_data='speech-to-text'), types.InlineKeyboardButton('Нейро-апскейл (x4)', callback_data='ai-upscale-x4'), types.InlineKeyboardButton('Нейросетевые субтитры', callback_data='ai-subtitles-video'), types.InlineKeyboardButton('Назад', callback_data='back_to_menu'))
+parsers = types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Подробная информация о YouTube канале', callback_data='full_info_yt'), types.InlineKeyboardButton('Скачать видео с YouTube', callback_data='download-video-from-yt'), types.InlineKeyboardButton('Найти видео по названию', callback_data='search_youtube_video'), types.InlineKeyboardButton('Скачать элементы плейлиста', callback_data='download-playlist-elements'), types.InlineKeyboardButton('Парсинг сайта', callback_data='parsing-site'), types.InlineKeyboardButton('Парсинг Google фото', callback_data='google-photo-parsing'), types.InlineKeyboardButton('Скачать музыку с VK', callback_data='vk_music_download'), types.InlineKeyboardButton('Последний пост в VK', callback_data='last_post_vk'), types.InlineKeyboardButton('Парсер Yandex (BETA)', callback_data='yandex_beta_parse'), types.InlineKeyboardButton('Получить API-токен', callback_data='get-api-token'), types.InlineKeyboardButton('Информация о Minecraft-сервере', callback_data='info-about-minecraft-server'), types.InlineKeyboardButton('Парсер Kwork', callback_data='parser-kwork'), types.InlineKeyboardButton('Скачать видео с TikTok', callback_data='tiktok-video-downloader'), types.InlineKeyboardButton('Скачать клип с Twitch', callback_data='twitch-clips-downloader'), types.InlineKeyboardButton('Парсер VK | RUTUBE | DZEN', callback_data='russian-trio-parsing'), types.InlineKeyboardButton('VK PROFILE PARSE', callback_data='vk-profile-info'), types.InlineKeyboardButton('Парсинг профилей Steam', callback_data='steam-profile-parsing'), types.InlineKeyboardButton('Последние новости', callback_data='last_news_meduza'), types.InlineKeyboardButton('Парсинг статьи', callback_data='parse_statii'), types.InlineKeyboardButton('Назад', callback_data='back_to_menu'))
 games = types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Сыграть в кликер', web_app=types.WebAppInfo('https://florestdev.github.io/clicker-html/')), types.InlineKeyboardButton("Змейка [NEW]", web_app=types.WebAppInfo("https://florestdev.github.io/snake-html/")), types.InlineKeyboardButton("Назад", callback_data="back_to_menu"))
+client_for_gpt = Client()
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+sambanova_api = OpenAI(api_key=sambanova_api_key, base_url="https://api.sambanova.ai/v1")
+PIL_FORMATS_MAP = {
+    '.jpg': 'JPEG', '.jpeg': 'JPEG',
+    '.png': 'PNG',
+    '.bmp': 'BMP',
+    '.gif': 'GIF',
+    '.webp': 'WEBP'
+}
+
+os.chdir(path)
+
+def parse_statii(message: types.Message):
+    def article_parsing(url: str):
+        """Парсинг статьи через прокси. Возвращает ArticleInfo."""
+        try:
+            # создаём объект newspaper
+            article = Article(url)
+
+            # КАСТОМНАЯ ЗАГРУЗКА через прокси
+            r = requests.get(
+                article.url,
+                proxies=proxies,
+                headers=headers_for_html_requests,
+                timeout=12
+            )
+            if r.status_code != 200 or not r.text.strip():
+                return None
+
+            # вручную подсовываем html newspaper'у
+            article.html = r.text
+            article.download_state = 2  # SUCCESS
+
+            # парсим
+            article.parse()
+
+            return {
+                "title": article.title,
+                "text": article.text[:3000],
+                "top_image": article.top_image
+            }
+
+        except Exception as e:
+            print("proxy parsing error:", e)
+            return None
+    article = article_parsing(message.text)
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton('Назад', callback_data='back'))
+    if not article:
+        bot.reply_to(message, f'Не получилось получить доступ к статье.', reply_markup=markup)
+    else:
+        if article.get("top_image"):
+            try:
+                bot.send_photo(
+                    chat_id=message.chat.id,
+                    photo=requests.get(article.get('top_image'), proxies=proxies, headers=headers_for_html_requests).content,
+                    caption=f'**{article.get("title")}**\n\n{article.get("text")}',
+                    reply_to_message_id=message.id,
+                    parse_mode='Markdown'
+                )
+            except:
+                bot.send_photo(message.chat.id, requests.get(article.get('top_image'), proxies=proxies, headers=headers_for_html_requests).content)
+                bot.send_message(message.chat.id, f'**{article.get("title")}**\n\n{article.get("text")}', reply_to_message_id=message.id, parse_mode='Markdown')
+        else:
+            bot.send_photo(message.chat.id, f'**{article.get("title")}**\n\n{article.get("text")}', reply_to_message_id=message.id, parse_mode='Markdown')
+
+def steam_profile_parsing(message: types.Message):
+    def fetch_profile_xml_by_vanity(vanity: str):
+        # Проверяем: vanity или SteamID64 (числовой)
+        if vanity.isdigit():
+            url = f"https://steamcommunity.com/profiles/{vanity}/?xml=1"
+        else:
+            url = f"https://steamcommunity.com/id/{vanity}/?xml=1"
+
+        try:
+            r = requests.get(url, timeout=10, headers={
+                "User-Agent": "steam-profile-fetcher/1.0 (+https://example.com)"
+            })
+        except requests.RequestException:
+            return None
+
+        if r.status_code != 200:
+            return None
+
+        try:
+            root = ET.fromstring(r.text)
+        except ET.ParseError:
+            return None
+
+        data = {child.tag: child.text for child in root}
+        if data.get('error'):
+            return None
+        return data
+    
+    def fetch_profile_xml_by_steamid(steamid64: str):
+        url = f"https://steamcommunity.com/profiles/{steamid64}/?xml=1"
+        try:
+            r = requests.get(url, timeout=10, headers={"User-Agent": "steam-profile-fetcher/1.0 (+https://example.com)"})
+        except requests.RequestException:
+            return None
+        if r.status_code != 200:
+            return None
+        try:
+            root = ET.fromstring(r.text)
+        except ET.ParseError:
+            return None
+        data = {child.tag: child.text for child in root}
+        if data.get('error'):
+            return
+        return data
+
+    profile = fetch_profile_xml_by_steamid(message.text.strip()) if message.text.isdigit() else fetch_profile_xml_by_vanity(message.text.strip())
+
+    if not profile:
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton('Назад', callback_data='back'))
+        bot.reply_to(
+            message,
+            '❌ Профиль не найден. Проверьте правильность ника или SteamID, который вы ввели.',
+            reply_markup=markup
+        )
+        return
+
+    # Форматирование всех полей (всё, что Steam вернул)
+    def safe_value(key):
+        val = profile.get(key)
+        return val if val not in [None, "", "null"] else "—"
+
+    steam_id64 = safe_value('steamID64')
+    steam_id = safe_value('steamID')
+    realname = safe_value('realname')
+    custom_url = safe_value('customURL')
+    state = safe_value('stateMessage')
+    online_state = safe_value('onlineState')
+    privacy = safe_value('privacyState')
+    visibility = safe_value('visibilityState')
+    vac_banned = "Да" if profile.get('vacBanned') == "1" else "Нет"
+    trade_ban = safe_value('tradeBanState')
+    limited = "Да" if profile.get('isLimitedAccount') == "1" else "Нет"
+    rating = safe_value('steamRating')
+    hours_2w = safe_value('hoursPlayed2Wk')
+    member_since = safe_value('memberSince')
+    location = safe_value('location')
+    headline = safe_value('headline')
+    summary = safe_value('summary').replace("<br>", "\n")
+    avatar = safe_value('avatarFull')
+
+    text = (
+        f"🎮 <b>Профиль Steam</b>\n\n"
+        f"🆔 SteamID64: <code>{steam_id64}</code>\n"
+        f"👤 Ник: {steam_id}\n"
+        f"🖼️ Аватар: {avatar}\n"
+        f"📛 Имя: {realname}\n"
+        f"🔗 Vanity URL: {custom_url}\n"
+        f"🌍 Локация: {location}\n"
+        f"📅 Дата регистрации: {member_since}\n\n"
+        f"💬 Статус: {state}\n"
+        f"🟢 Состояние: {online_state}\n"
+        f"🔒 Приватность: {privacy}\n"
+        f"👁 Видимость: {visibility}\n\n"
+        f"⚠️ VAC бан: {vac_banned}\n"
+        f"🚫 Торговый бан: {trade_ban}\n"
+        f"💰 Ограниченный аккаунт: {limited}\n\n"
+        f"⭐ Рейтинг Steam: {rating}\n"
+        f"⏱ Часы за 2 недели: {hours_2w}\n\n"
+        f"📰 Заголовок: {headline}\n"
+        f"📄 О себе:\n{summary}"
+    )
+
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("🔗 Открыть в Steam", url=f"https://steamcommunity.com/id/{custom_url or steam_id64}"),
+        types.InlineKeyboardButton('Назад', callback_data='back')
+    )
+    try:
+        bot.reply_to(message, text, parse_mode='HTML', reply_markup=markup)
+    except:
+        bot.reply_to(message, text, reply_markup=markup)
+
+
+def get_vk_profile_info(message: types.Message):
+    session = vk_api.VkApi(token=token_for_vk)
+    api = session.get_api()
+    fields = (
+        "bdate,sex,city,country,home_town,photo_max_orig,"
+        "followers_count,relation,contacts,domain,site,status,about,"
+        "education,schools,universities,occupation,career,interests,"
+        "activities,music,movies,tv,books,games,quotes,personal,connections"
+    )
+    result = api.users.get(user_ids=message.text, fields=fields)
+    if result:
+        info = parse_vk_user_data(result[0])
+        bot.reply_to(message, f'Подробная информация о пользователе.\n\n{info}', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+    else:
+        bot.reply_to(message, f'Пользователь не найден.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+
+def conv_image(message: types.Message, image: bytes):
+    selected_format_button = message.text # Текст кнопки, например, ".jpg"
+    selected_format_pil = PIL_FORMATS_MAP.get(selected_format_button.lower())
+
+    if not selected_format_pil:
+        bot.reply_to(message, "Неверный формат. Пожалуйста, выберите один из предложенных.", reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1).add(types.KeyboardButton(".jpg"), types.KeyboardButton('.png'), types.KeyboardButton('.gif'), types.KeyboardButton('.bmp'), types.KeyboardButton('.webp')))
+        # Перерегистрация обработчика для следующего ввода
+        bot.register_next_step_handler(message, conv_image, image)
+        return
+
+    try:
+        # Открываем изображение с помощью Pillow
+        img = Image.open(io.BytesIO(image))
+
+        # --- Логика Конвертации Изображения ---
+        output_buffer = io.BytesIO()
+
+        # Pillow может требовать преобразования цветового пространства для некоторых форматов
+        if selected_format_pil == 'JPEG' and img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+        # Для GIF, если нужно сохранить анимацию, потребуется более сложная обработка.
+        # Здесь мы просто сохраним первый кадр или как обычное изображение.
+        elif selected_format_pil == 'GIF':
+            # Простая обработка GIF: сохранение первого кадра
+            img.save(output_buffer, format=selected_format_pil)
+        else:
+            img.save(output_buffer, format=selected_format_pil)
+
+        output_buffer.seek(0) # Перематываем буфер в начало
+        converted_image_data = output_buffer.read()
+        # --- Конец Логики Конвертации ---
+
+        # Отправка сконвертированного изображения
+        caption = f"Изображение конвертировано в {selected_format_button}"
+        output_filename = f"converted_image{selected_format_button}" # Имя файла для отправки
+
+        # Отправляем как фото, если формат поддерживается, иначе как документ
+        # Note: Pillow может сохранять GIF, но telegram может отправлять его как документ.
+        # Лучше всего проверить, какой метод предпочтительнее для разных форматов.
+        # Отправляем как документ (для GIF, BMP или если фото слишком большое)
+        bot.send_document(message.chat.id, (output_filename, converted_image_data), caption=caption, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+
+        bot.reply_to(message, "Можете прислать новое изображение.", reply_markup=types.ReplyKeyboardMarkup(True, input_field_placeholder=f'Сэр, да, сэр.', row_width=1).add(types.KeyboardButton('🏡В меню')))
+    except Exception as e:
+        print(f"Ошибка при конвертации/отправке изображения: {e}")
+        bot.reply_to(message, "Произошла ошибка при конвертации изображения. Пожалуйста, попробуйте позже.", reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+
+def get_img_for_conv(message: types.Message):
+    if not message.document:
+        bot.reply_to(message, f'Нужно было прислать фотографию без сжатия в следующих форматах: .jpg, .png, .bmp, .gif, .webp.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+    else:
+        if not message.document.file_name.endswith(('.gif', '.jpg', '.jpeg', '.png', '.bmp', '.webp')):
+            bot.reply_to(message, f'Нужно было прислать фотографию без сжатия в следующих форматах: .jpg, .png, .bmp, .gif, .webp.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+        else:
+            bot.reply_to(message, f'Получили фотографию! Выберите из доступных форматов: ', reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1).add(types.KeyboardButton(".jpg"), types.KeyboardButton('.png'), types.KeyboardButton('.gif'), types.KeyboardButton('.bmp'), types.KeyboardButton('.webp')))
+            bot.register_next_step_handler(message, conv_image, bot.download_file(bot.get_file(message.document.file_id).file_path))
+
+def deepseek_req(prompt: str, system_prompt: str = 'Ты милый AI.'):
+    return sambanova_api.chat.completions.create(messages=[{"role":"user", "content":prompt}, {"role":"system", 'content':system_prompt}], model='DeepSeek-V3-0324').choices[0].message.content
+
+def get_info_about_whisper(request: requests.Response, token: str):
+    print(request.json())
+    task_id = request.json()["task_id"]
+    json = {}
+    while True:
+        r = requests.get(f'https://api.whisper-api.com/status/{task_id}', headers={"X-API-Key":token}, proxies=proxies)
+        if r.json()["status"] != 'completed':
+            pass
+        else:
+            json = r.json()
+            break
+        time.sleep(5)
+    return json
+
+def ai_subtitles_video(message: types.Message, token: str):
+    if message.document:
+        if message.document.file_name[-4:] in ['.mp4']:
+            if message.document.file_size > 20000000:
+                bot.reply_to(message, f'Отправьте видео до 20 МБ, в формате .mp4 без сжатия.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+            else:
+                bot.send_message(message.chat.id, f'Скачиваю видео..')
+                random_ = random.random()
+                new_ = random.random()
+                _ = open(path / f'{random_}.mp4', 'wb')
+                _.write(bot.download_file(bot.get_file(message.document.file_id).file_path))
+                _.close()
+                video = VideoFileClip(path / f'{random_}.mp4')
+                video.audio.write_audiofile(path / f'{random_}.wav')
+                req = requests.post('https://api.whisper-api.com/transcribe', files={"file":open(path / f'{random_}.wav', 'rb')}, headers={"X-API-Key":token}, proxies=proxies, data={"language":"ru", 'format':"srt", "model_size":"medium"})
+                print(req.json())
+                time.sleep(3.5)
+                result = get_info_about_whisper(req, token)
+                srt = open(path / f'{random_}.srt', 'w', encoding='UTF-8')
+                srt.write(result['result'])
+                srt.close()
+                style_options = f"Fontname=Arial,FontSize=24,PrimaryColour=255_255_255_255,OutlineColour=0_0_0_200,Alignment=8"
+                _ = os.path.join(path / f'{random_}.srt')
+                command = [
+                    'ffmpeg', '-i', os.path.join(path, f'{random_}.mp4'),
+                    '-vf', f'subtitles={_}:force_style=\'{style_options}\'',
+                    '-c:a', 'copy',
+                    '-c:v', 'libx264', '-preset', 'medium', '-crf', '23',
+                    '-y',
+                    os.path.join(path / f'{new_}.mp4')
+                ]
+                subprocess.run(command)
+                bot.send_video(message.chat.id, open(path / f'{new_}.mp4', 'rb'), duration=video.duration, width=video.w, height=video.h, caption='Ваше видео с субтитрами.', supports_streaming=True, reply_to_message_id=message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+                os.remove(path / f'{random_}.mp4')
+                os.remove(path / f'{new_}.mp4')
+                os.remove(path / f'{random_}.wav')
+        else:
+            bot.reply_to(message, f'Отправьте видео до 20 МБ, в формате .mp4 без сжатия.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+    elif message.text:
+        if message.text.startswith(('http://', 'https://')) and message.text.endswith('.mp4'):
+            random_ = random.random()
+            bot.send_message(message.chat.id, f'Пытаемся скачать видео..')
+            request = requests.get(message.text, stream=True, proxies=proxies, headers=headers_for_html_requests)
+            if request.status_code != 200:
+                bot.reply_to(message, f'Ошибка. Код: {request.status_code}', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+            else:
+                with open(path / f'{random_}.mp4', 'wb') as file:
+                    for chunk in request.iter_content(8192):
+                        if chunk:
+                            file.write(chunk)
+                    file.close()
+                bot.send_message(message.chat.id, f'Файл скачен. Проверяем его размер.')
+                if open(path / f'{random_}.mp4', 'rb').read() > 50000000:
+                    bot.reply_to(message, f'Видео должно весить 50 МБ. Это максимум.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+                    os.remove(path / f'{random_}.mp4')
+                else:
+                    bot.send_message(message.chat.id, f'Файл подходит нашим требованиям. Начинаем обработку.')
+                    bot.send_message(message.chat.id, f'Скачиваю видео..')
+                    random_ = random.random()
+                    new_ = random.random()
+                    video = VideoFileClip(path / f'{random_}.mp4')
+                    video.audio.write_audiofile(path / f'{random_}.wav')
+                    req = requests.post('https://api.whisper-api.com/transcribe', files={"file":open(path / f'{random_}.wav', 'rb')}, headers={"X-API-Key":token}, proxies=proxies, data={"language":"ru", 'format':"srt", "model_size":"medium"})
+                    print(req.json())
+                    time.sleep(3.5)
+                    result = get_info_about_whisper(req, token)
+                    srt = open(path / f'{random_}.srt', 'w', encoding='UTF-8')
+                    srt.write(result['result'])
+                    srt.close()
+                    style_options = f"Fontname=Arial,FontSize=24,PrimaryColour=255_255_255_255,OutlineColour=0_0_0_200,Alignment=8"
+                    _ = os.path.join(path / f'{random_}.srt')
+                    command = [
+                        'ffmpeg', '-i', os.path.join(path, f'{random_}.mp4'),
+                        '-vf', f'subtitles={_}:force_style=\'{style_options}\'',
+                        '-c:a', 'copy',
+                        '-c:v', 'libx264', '-preset', 'medium', '-crf', '23',
+                        '-y',
+                        os.path.join(path / f'{new_}.mp4')
+                    ]
+                    subprocess.run(command)
+                    bot.send_video(message.chat.id, open(path / f'{new_}.mp4', 'rb'), duration=video.duration, width=video.w, height=video.h, caption='Ваше видео с субтитрами.', supports_streaming=True, reply_to_message_id=message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+                    os.remove(path / f'{random_}.mp4')
+                    os.remove(path / f'{new_}.mp4')
+                    os.remove(path / f'{random_}.wav')
+        else:
+            bot.reply_to(message, f'Ожидалась ссылка на видео .mp4 формата.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+    else:
+        bot.reply_to(message, f'Неизвестный отклик. Либо ссылка, либо .mp4 видео без сжатия.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+
+def get_token_whisper(message: types.Message):
+    bot.reply_to(message, f'Эта функция добавит нейро-сетевые субтитры к вашему видео.\n\nСкиньте видео в Telegram без сжатия (20 МБ), или скиньте прямую ссылку на видео (50 МБ).', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+    bot.register_next_step_handler(message, ai_subtitles_video, message.text)
+
+def ai_upscale_x4(message: types.Message):
+    if message.document:
+        if message.document.file_name[-4:] in ['.jpg', '.png']:
+            img = Image.open(io.BytesIO(bot.download_file(bot.get_file(message.document.file_id).file_path)))
+            original_width, original_height = img.size
+
+            new_width = int(original_width * 4)
+            new_height = int(original_height * 4)
+
+            upscaled = img.resize((new_width, new_height), Image.Resampling.BICUBIC)
+            new = io.BytesIO()
+            upscaled.save(new, 'JPEG')
+            bot.send_document(message.chat.id, new.getvalue(), message.id, f'Ваше расширенное изображение.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')), visible_file_name='upscaled-photo.jpg')
+        else:
+            bot.reply_to(message, f'Ожидалась фотография JPG/PNG без сжатия.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+    else:
+        bot.reply_to(message, f'Ожидалась фотография JPG/PNG без сжатия.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+
+def unzip_zip_to_apk(message: types.Message):
+    if not message.document:
+        bot.reply_to(message, f'Ожидаем был файл zip.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+    else:
+        if message.document.file_size > 20000000:
+            bot.reply_to(message, f'Файл больше 20 МБ.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+        else:
+            if message.document.file_name[-4:] in ['.zip']:
+                file = io.BytesIO(bot.download_file(bot.get_file(message.document.file_id).file_path))
+                os.mkdir(path / f'{message.from_user.id}_razarchiv')
+                zip = zipfile.ZipFile(file, 'r')
+                zip.extractall(path / f'{message.from_user.id}_razarchiv')
+                bot.reply_to(message, f'Распаковали! Запаковываем в .apk...')
+                zip_new = zipfile.ZipFile(path / f'{message.from_user.id}_razarchiv.apk', 'w')
+                for root, dirs, files in os.walk(path / f'{message.from_user.id}_razarchiv'):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.relpath(file_path, path / f'{message.from_user.id}_razarchiv')
+                        zip_new.write(file_path, arcname=arcname)
+                zip_new.close()
+                bot.send_document(message.chat.id, open(path / f'{message.from_user.id}_razarchiv.apk', 'rb'), message.id, f'APK файл.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+                os.remove(path / f'{message.from_user.id}_razarchiv.apk')
+                shutil.rmtree(path / f'{message.from_user.id}_razarchiv', True)
+            else:
+                bot.reply_to(message, f'Ожидаем был файл .zip.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+
+def upzip_apk_or_jar(message: types.Message):
+    if not message.document:
+        bot.reply_to(message, f'Ожидаем был файл apk/jar.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+    else:
+        if message.document.file_size > 20000000:
+            bot.reply_to(message, f'Файл больше 20 МБ.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+        else:
+            if message.document.file_name[-4:] in ['.jar', '.apk']:
+                file = io.BytesIO(bot.download_file(bot.get_file(message.document.file_id).file_path))
+                os.mkdir(path / f'{message.from_user.id}_razarchiv')
+                zip = zipfile.ZipFile(file, 'r')
+                zip.extractall(path / f'{message.from_user.id}_razarchiv')
+                bot.reply_to(message, f'Распаковали! Запаковываем в .zip для большей читаемости...')
+                zip_new = zipfile.ZipFile(path / f'{message.from_user.id}_razarchiv.zip', 'w')
+                for root, dirs, files in os.walk(path / f'{message.from_user.id}_razarchiv'):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.relpath(file_path, path / f'{message.from_user.id}_razarchiv')
+                        zip_new.write(file_path, arcname=arcname)
+                zip_new.close()
+                bot.send_document(message.chat.id, open(path / f'{message.from_user.id}_razarchiv.zip', 'rb'), message.id, f'Архив с файлами.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+                os.remove(path / f'{message.from_user.id}_razarchiv.zip')
+                shutil.rmtree(path / f'{message.from_user.id}_razarchiv', True)
+            else:
+                bot.reply_to(message, f'Ожидаем был файл apk/jar.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+
+def yandex_rutube_vk_parser_video(message: types.Message):
+    if not message.text.startswith(('https://rutube.ru/video/', 'https://vk.com/vkvideo', 'https://dzen.ru/video/watch/', 'https://zen.yandex.ru/video/watch/')):
+        bot.reply_to(message, f'Неверный формат ссылки!\nПоддерживаемые форматы: https://rutube.ru/video/<ID>, https://vk.com/vkvideo..., https://dzen.ru/video/watch', 'https://zen.yandex.ru/video/watch.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+    else:
+        filename = random.random()
+        ydl_opts = {
+            'outtmpl': os.path.join(path, f'{filename}.%(ext)s'),  # Шаблон имени файла
+            'format': 'mp4',  # Формат видео
+            'noplaylist': True, 
+            'format': 'worst',
+            'proxy':proxies.get('http'),
+        }
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as downloader:
+                info = downloader.extract_info(message.text, False)
+                downloader.download([message.text])
+            video = open(path / f'{filename}.mp4', 'rb').read()
+            if len(video) > 50000000:
+                bot.reply_to(message, f'Не можем отправить видео: оно весит больше 50 МБ.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+                os.remove(path / f'{filename}.mp4')
+            else:
+                bot.send_chat_action(message.chat.id, 'upload_video')
+                author = info.get('uploader', 'Not Founded')
+                title = info.get('title', 'Not Founded')
+                duration = info.get('duration', 0)
+                duration_str = info.get('duration_string', '0:00')
+                views = info.get('view_count', 0)
+                likes = info.get('like_count', 0)
+                comments = info.get('comment_count', 0)
+                bot.send_video(message.chat.id, open(path / f'{filename}.mp4', 'rb'), caption=f'{author} - {title}\nПросмотры: {views}\nЛайки: {likes}\nКомментарии: {comments}\nДлительность: {duration_str}', supports_streaming=True, reply_to_message_id=message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')), duration=duration)
+                os.remove(path / f'{filename}.mp4')
+        except:
+            bot.reply_to(message, f'Ошибка скачивания. Попробуйте позже, пожалуйста!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+            try:
+                os.remove(path / f'{filename}.mp4')
+            except:
+                pass
+
+def twitch_downloader(message: types.Message):
+    if not message.text.startswith(('https://m.twitch.tv/twitch/clip/', 'https://twitch.tv/twitch/clip/')):
+        bot.reply_to(message, f'Ссылка должна начинаться с https://m.twitch.tv/twitch/clip/, или https://twitch.tv/twitch/clip/.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+    else:
+        filename = random.random()
+        ydl_opts = {
+            'outtmpl': os.path.join(path, f'{filename}.%(ext)s'),  # Шаблон имени файла
+            'format': 'mp4',  # Формат видео
+            'noplaylist': True, 
+            'format': 'worst',
+            'proxy':proxies.get('http'),
+        }
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as downloader:
+                info = downloader.extract_info(message.text, False)
+                downloader.download([message.text])
+            video = open(path / f'{filename}.mp4', 'rb').read()
+            if len(video) > 50000000:
+                bot.reply_to(message, f'Не можем отправить видео: оно весит больше 50 МБ.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+                os.remove(path / f'{filename}.mp4')
+            else:
+                bot.send_chat_action(message.chat.id, 'upload_video')
+                author = info.get('creator', 'Not Founded')
+                title = info.get('title', 'Not Founded')
+                duration = info.get('duration', 0)
+                duration_str = info.get('duration_string', '0:00')
+                views = info.get('view_count', 0)
+                bot.send_video(message.chat.id, open(path / f'{filename}.mp4', 'rb'), duration, caption=f'{author} - {title}\nДлительность: {duration_str}\nПросмотры: {views}', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')), reply_to_message_id=message.id, supports_streaming=True)
+                os.remove(path / f'{filename}.mp4')
+        except:
+            bot.reply_to(message, f'Ошибка скачивания. Попробуйте позже, пожалуйста!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+            try:
+                os.remove(path / f'{filename}.mp4')
+            except:
+                pass
+
+def get_country_of_people(message: types.Message, name: str, age: str, info: str, command: str):
+    if message.location:
+        bot.reply_to(message, f'Получили заявку! Ждите ответа от Флореста!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+        bot.send_message(message.chat.id, f'В меню.', reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('🏡В меню')))
+        admins_of_server = [7980694914, 7455363246]
+        r = requests.get(f"https://nominatim.openstreetmap.org/reverse?lat={message.location.latitude}&lon={message.location.longitude}&format=json", headers={"Accept-Language":"ru-RU", "User-Agent":"FlorestApplication"}, proxies=proxies)
+        json = r.json()
+        for admin in admins_of_server:
+            try:
+                bot.send_message(admin, f'Новая заявка на FSS!\nИмя пользователя: {name}\nВозраст: {age}\nИнформация об игроке (что будет делать): {info}\nЕсть-ли тиммейты: {command}\nСтрана игрока: {json["address"]["country"]}\nГород: {json["address"]["city"]}\n{message.from_user.id}')
+            except:
+                pass
+    elif message.contact:
+        bot.reply_to(message, f'Получили заявку! Ждите ответа от Флореста!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+        bot.send_message(message.chat.id, f'В меню.', reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('🏡В меню')))
+        admins_of_server = [7980694914, 7455363246]
+        for admin in admins_of_server:
+            try:
+                bot.send_message(admin, f'Новая заявка на FSS!\nИмя пользователя: {name}\nВозраст: {age}\nИнформация об игроке (что будет делать): {info}\nЕсть-ли тиммейты: {command}\nПервые несколько символов номера: +{message.contact.phone_number[:5]}\n{message.from_user.id}')
+            except:
+                pass
+    else:
+        bot.reply_to(message, f'Неизвестный отклик. Попробуйте еще.')
+        bot.register_next_step_handler(message, get_country_of_people, name, age, info, command)
+
+def get_command_of_people(message: types.Message, name: str, age: str, info: str):
+    bot.reply_to(message, f'Окей! Пожалуйста, пришлите свою геометку/номер телефона для подтверждения своей геолокации.\nДанные не будут храниться где-либо, а использоваться исключительно в целях подтверждения вашего региона.', reply_markup=types.ReplyKeyboardMarkup(row_width=1).add(types.KeyboardButton('Отправить свою геолокацию', request_location=True), types.KeyboardButton('Отправить свой номер', request_contact=True)))
+    bot.register_next_step_handler(message, get_country_of_people, name, age, info, message.text)
+
+def get_info_about__(message: types.Message, name: str, age: str):
+    bot.reply_to(message, f'Отлично! У вас есть команда, с кем вы будете играть?')
+    bot.register_next_step_handler(message, get_command_of_people, name, age, message.text)
+
+def get_age(message: types.Message, name: str):
+    if not message.text.isdigit():
+        bot.reply_to(message, f'Указанное вами сообщение не является числом. Попробуйте еще раз.')
+        bot.register_next_step_handler(message, get_age)
+    else:
+        bot.reply_to(message, f'Отлично! Что вы собираетесь делать на нашем проекте? (Пример: построю свою деревушку)')
+        bot.register_next_step_handler(message, get_info_about__, name, message.text)
+
+def create_request_to_fss(message: types.Message):
+    bot.reply_to(message, f'Отлично! Сколько вам лет?')
+    bot.register_next_step_handler(message, get_age, message.text)
+
+def tiktok_video_downloader(message: types.Message):
+    if not message.text:
+        bot.reply_to(message, f'Ожидалось текстовое сообщение.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+    else:
+        if not message.text.startswith(('https://www.tiktok.com/@', 'https://vt.tiktok.com/')):
+            bot.reply_to(message, f'Эта функция может скачивать ТОЛЬКО видео с TikTok.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+        else:
+            name_of_file = random.random()
+            ydl_opts = {
+                'outtmpl': os.path.join(path, f'{name_of_file}.%(ext)s'),  # Шаблон имени файла
+                'format': 'mp4',  # Формат видео
+                'noplaylist': True, 
+                'format': 'worst',
+                'proxy':proxies.get('http'),
+            }
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as downloader:
+                    info = downloader.extract_info(message.text, False)
+                    downloader.download([message.text])
+                video = open(path / f'{name_of_file}.mp4', 'rb').read()
+                if len(video) > 50000000:
+                    bot.reply_to(message, f'Не можем отправить видео: оно весит больше 50 МБ.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+                    os.remove(path / f'{name_of_file}.mp4')
+                else:
+                    bot.send_chat_action(message.chat.id, 'upload_video')
+                    channel = info.get('channel', 'Unknown channel')
+                    title = info.get('title', 'Unknown title')
+                    likes = info.get('like_count', '0')
+                    views = info.get('view_count', '0')
+                    reposts = info.get('repost_count', '0')
+                    comments = info.get('comment_count', '0')
+                    duration = info.get('duration', 0)
+                    duration_str = info.get('duration_string', '0:00')
+                    bot.send_video(message.chat.id, open(path / f'{name_of_file}.mp4', 'rb'), caption=f'{channel} - {title}\nПросмотры: {views}\nЛайки: {likes}\nРепосты: {reposts}\nКомментарии: {comments}\nДлительность: {duration_str}', supports_streaming=True, reply_to_message_id=message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')), duration=duration)
+                    os.remove(path / f'{name_of_file}.mp4')
+            except Exception as e:
+                bot.reply_to(message, f'Ошибка скачивания. Попробуйте позже, пожалуйста!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+                try:
+                    os.remove(path / f'{name_of_file}.mp4')
+                except:
+                    pass
+
+@bot.message_handler(commands=['warn'])
+def warn_func(message: types.Message):
+    if not message.forward_from:
+        if message.chat.type != 'supergroup':
+            bot.reply_to(message, f'Данная команда работает только в супергруппе.')
+        else:
+            if message.chat.id != chat_id:
+                bot.reply_to(message, f'Функции модерации "FlorestBot" работают только в группе "FlorestChat" (@florestchannelgroup).')
+                bot.leave_chat(message.chat.id)
+            else:
+                if bot.get_chat_member(message.chat.id, message.from_user.id).status not in ['administrator', 'owner'] and message.from_user.username != 'GroupAnonymousBot':
+                    bot.reply_to(message, f'Данная команда доступна только для группы "Администраторы".')
+                else:
+                    if message.reply_to_message:
+                        if bot.get_chat_member(group_id, message.reply_to_message.from_user.id).status in ['administrator', 'owner', 'left', 'kicked']:
+                            bot.reply_to(message, f'{message.from_user.full_name}, ты не можешь дать предупреждение администратору, владельцу, или человеку, вышедшему из группы.')
+                        else:
+                            bot.reply_to(message, f'Предупреждение зарегистрировано.')
+                            args = message.text.split()[1:]
+                            try:
+                                bot.send_message(message.chat.id, f'ПРЕДУПРЕЖДЕНИЕ [\!]\nУчастник: [{message.reply_to_message.from_user.full_name}](tg://user?id={message.reply_to_message.from_user.id})\nПричина: ' + ' '.join(args), reply_to_message_id=message.reply_to_message.id, parse_mode='MarkdownV2')
+                            except:
+                                bot.send_message(message.chat.id, f'ПРЕДУПРЕЖДЕНИЕ [!]\nУчастник: {message.reply_to_message.from_user.full_name}\nПричина: ' + ' '.join(args), reply_to_message_id=message.reply_to_message.id)
+                    else:
+                        bot.reply_to(message, f'Ты должен ответить на сообщение нарушителя, чтобы дать предупреждение.')
+
+def for_prohibitions_in_group(message: str):
+    request = client_for_gpt.chat.completions.create([{"role":"user", 'content':f"В данном сообщении есть посыл продажи, оскорбления, пропаганда запрещенных идей, пропаганда рекламных услуг, реклама (ссылки на сторонние ресурсы тоже считаются, кроме тех, где florestdev, florestone4185, florestdev4185, florest4185), публикация личных данных, ссылки на запрещенные рнсурсы, призывы к суициду, распостранения украинской пропаганды, пропаганда феминизма, ЛГБТК+ и т.д.? Ответь одним словом, да/нет.\n\n\"{message}\""}], 'gpt-4o-mini', RetryProvider([PollinationsAI, Chatai, OIVSCodeSer2, Blackbox, LegacyLMArena, PollinationsAI]), False, proxies.get('http'), max_tokens=5)
+    print(message, request.choices[0].message.content)
+    if 'да' in request.choices[0].message.content.lower():
+        return True
+    else:
+        return False
+
+def cut_link_clck(message: types.Message):
+    if not message.text:
+        bot.reply_to(message, f'Сообщение должно содержать текст.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+    else:
+        if not message.text.startswith(('http://', 'https://')):
+            bot.reply_to(message, f'Сообщение должно начинаться с http://, или с https://.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+        else:
+            request = requests.get('https://clck.ru/--', params={"url":message.text}, headers=headers_for_html_requests, proxies=proxies)
+            if request.text == 'limited':
+                time.sleep(2.5)
+                request = requests.get('https://clck.ru/--', params={"url":message.text}, headers=headers_for_html_requests, proxies=proxies)
+                bot.reply_to(message, request.text, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+            else:
+                bot.reply_to(message, request.text, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+                
+def parse_kwork(category: int, pages: int = 1) -> list[dict]:
+    """Функция для парсинга объявлений на kwork.\ncategory: категория для парсинга.\npages: сколько страниц спарсить? По умолчанию, 1.\nВозвращает список с кворками."""
+    import requests, json
+    from bs4 import BeautifulSoup
+        
+    offers: list[dict] = []
+        
+    response = requests.get('https://kwork.ru/projects', params={"c": category, "page":'1'}, proxies=proxies)
+    response.raise_for_status()
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    if not soup.head:
+        raise Exception
+
+    scripts = soup.head.find_all("script")
+    js_script = ""
+    for script in scripts:
+        if script.text.startswith("window.ORIGIN_URL"):
+            js_script = script.text
+            break
+
+    start_pointer = 0
+    json_data = ""
+    in_literal = False
+    for current_pointer in range(len(js_script)):
+        if js_script[current_pointer] == '"' and js_script[current_pointer - 1] != "\\":
+            in_literal = not in_literal
+            continue
+
+        if in_literal or js_script[current_pointer] != ";":
+            continue
+
+        line = js_script[start_pointer:current_pointer].strip()
+        if line.startswith("window.stateData"):
+            json_data = line[17:]
+            break
+
+        start_pointer = current_pointer + 1
+
+    data = json.loads(json_data)
+
+    for raw_kwork in data["wantsListData"]["wants"]:
+        offers.append(raw_kwork)
+    return offers
+
+def parser_kwork(message: types.Message):
+    if not message.text.isdigit():
+        bot.reply_to(message, f'Номер категории должен быть цифрой!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+    else:
+        _ = []
+        parsed = parse_kwork(int(message.text))
+        for i in parsed:
+            _.append(f'{i.get("name", "Неизвестно")} - https://kwork.ru/projects/{i.get("id", "Неизвестно")} - {i.get("priceLimit", "Неизвестно")} руб. - {i["user"]["username"]}')
+        bot.reply_to(message, f'Список кворков:\n' + '\n'.join(_), reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+
+def download_playlist_elements(message: types.Message):
+    if not message.text:
+        bot.reply_to(message, f'Ответ должен быть в текстовом сообщении.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+    else:
+        try:
+            playlist = Playlist(message.text, proxies=proxies)
+            bot.reply_to(message, f'Получили доступ к плейлисту.. Начинаем качать..')
+            videos: list[YouTube] = []
+            for i in playlist.videos:
+                videos.append(i)
+                bot.send_message(message.chat.id, f'Добавили "{i.title}" в список.')
+            for video in videos[:150]:
+                name_of_file = random.random()
+                try:
+                    if video.age_restricted:
+                        bot.reply_to(message, f'Не удалось скачать {video.watch_url}: возрастные ограничения.')
+                    stream = video.streams.get_lowest_resolution()
+                    if stream.filesize > 50000000:
+                        bot.reply_to(message, f'Видео весит больше 50 МБ. Согласно ограничениям Telegram мы не можем Вам его отправить.\nКликните на кнопку, чтобы посмотреть и скачать видео напрямую.', reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('🏡В меню')))
+                        bot.send_message(message.chat.id, f'Ваша прямая ссылка!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Смотреть видео напрямую.', stream.url)))
+                    else:
+                        progress = bot.send_message(message.chat.id, f'Прогресс.. 0%/100%')
+                        def progress_func(stream, chunk, bytes_remaining):
+                            total_size = stream.filesize
+                            bytes_downloaded = total_size - bytes_remaining
+                            percentage_complete = bytes_downloaded / total_size * 100
+                            now_downloaded = len(chunk) / 1024 / 1024
+                            bot.edit_message_text(f'Прогресс.. {percentage_complete:.2f}/100% [{bytes_downloaded:.2f} / {total_size:.2f} B]\n⚡Сейчас скачали: {now_downloaded:.2f} MB', message.chat.id, progress.id)
+                            time.sleep(2.5)
+                        video.register_on_progress_callback(progress_func)
+                        video.streams.get_audio_only().download(path, f'{name_of_file}.mp3')
+                        bot.send_chat_action(message.chat.id, f'upload_voice')
+                        date = video.publish_date.strftime("%Y-%m-%d %H:%M:%S")
+                        likes = requests.get('https://www.googleapis.com/youtube/v3/videos', params={"part":"statistics", "id":video.video_id, "key":google_api_key}, proxies=proxies, headers=headers_for_html_requests).json()
+                        try:
+                            bot.send_audio(message.chat.id, open(path / f'{name_of_file}.mp3', 'rb'), duration=video.length, caption=f'{video.author} - {video.title}\nКоличество просмотров: {video.views}\nКоличество отметок "нравится": {likes["items"][0]["statistics"]["likeCount"]}\nКоличество комментариев: {likes["items"][0]["statistics"]["commentCount"]}\nДата публикации: {date}', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')), performer=video.author, title=video.title)
+                        except:
+                            bot.send_audio(message.chat.id, open(path / f'{name_of_file}.mp3', 'rb'), duration=video.length, caption=f'{video.author} - {video.title}\nКоличество просмотров: {video.views}\nДата публикации: {date}', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')), performer=video.author, title=video.title)
+                        bot.delete_message(message.chat.id, progress.id)
+                        os.remove(path / f'{name_of_file}.mp3')
+                except:
+                    bot.delete_message(message.chat.id, progress.id)
+                    try:
+                        os.remove(path / f'{name_of_file}.mp3')
+                    except:
+                        pass
+                    pass
+            bot.send_message(message.chat.id, f'Скачивание {len(videos)} успешно завершено.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+        except:
+            bot.reply_to(message, f'Не удалось получить доступа к плейлисту.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+
+def toxic_or_auto_deepseek(message: types.Message):
+    if message.text in ['auto', 'toxic']:
+        bot.reply_to(message, f'ОК! Напишите свой первый запрос DeepSeek`у.\nБот принимает текстовые сообщение, голосовые, а также фотографии без сжатия в формате JPG/PNG.')
+        bot.register_next_step_handler(message, ai_obrabotchik, 3, message.text)
+    else:
+        bot.reply_to(message, f'Доступны только auto и toxic.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+
+def free_proxies_():
+    print(f'Ищем и проверяем прокси...\nВыключите свои методы анонимизации для корректной обработки процесса.')
+    response = requests.get("https://free-proxy-list.net/", headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36', 'Accept-Language': 'ru-RU'})
+    soup = BeautifulSoup(response.content, 'html.parser')
+    proxies_from_site = soup.textarea.text.split('\n')[3:-1]
+    normisy = []
+    for proxy in sync_tqdm(proxies_from_site[:20], desc='Ищем прокси...'):
+        try:
+            req = requests.get(f'http://ip-api.com/json/google.ru?lang=ru', headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36', 'Accept-Language': 'ru-RU'}, proxies={"http":f"http://{proxy}", "https":f'http://{proxy}'}, timeout=1)
+            if req.status_code == 200:
+                normisy.append(proxy)
+            else:
+                pass
+        except:
+            pass
+    print(f'Готово.\nПродолжаем программный цикл!')
+    return normisy
+
+def generate_insulate_reply(message: str):
+    try:
+        if not 'non-toxic' in message:
+            request = deepseek_req(message, f"не отвечай на запросы позитивно и отвечай максимально грубо с матами, на каждое мое сообщения, без разницы, обращаюсь я к тебе мило или нет, всего отвечай максимально грубо")
+            return request
+        else:
+            request = deepseek_req(message)
+            return request
+    except:
+        result = client_for_gpt.chat.completions.create([{"role":"user", 'content':message}], 'gpt-4o-mini', RetryProvider([PollinationsAI, Chatai, OIVSCodeSer2, Blackbox, LegacyLMArena, PollinationsAI]), max_tokens=4096, proxy=proxies.get('http'), web_search=True).choices[0].message.content
+        return f'Сорри, я пока не работаю с DeepSeek. Будет использоваться ChatGPT.\n\n{result}'
+
+def add_watermark_on_photo_func(message: types.Message, image: bytes):
+    base_image = Image.open(io.BytesIO(image)).convert("RGBA")
+        
+    # Создаем прозрачный слой для водяного знака
+    watermark = Image.new("RGBA", base_image.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(watermark)
+        
+    # Настройки текста
+    font = ImageFont.truetype('times.ttf', 40)  # Шрифт и размер
+    text_color = (255, 255, 255, 100)  # R,G,B,Alpha (прозрачность)
+        
+    position = (base_image.width // 2 - watermark.width // 2,  # По центру
+                base_image.height // 2 - watermark.height // 2)
+        
+    # Рисуем текст
+    draw.text(position, message.text, fill=text_color, font=font)
+        
+    # Накладываем водяной знак
+    result = Image.alpha_composite(base_image, watermark)
+        
+    # Сохраняем (конвертируем обратно в RGB для JPG)
+    output = io.BytesIO()
+    result.convert("RGB").save(output, 'JPEG')
+    bot.send_photo(message.chat.id, output.getvalue(), f'Ваше фото с водяным знаком.', reply_to_message_id=message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+
+def add_watermark_on_photo_(message: types.Message):
+    if not message.document:
+        bot.reply_to(message, f'Функция принимает только фото в формате JPG/PNG, без сжатия!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+    else:
+        if message.document.file_name[-4:] in ['.jpg', '.png']:
+            bot.reply_to(message, f'Спасибо! Напишите текст, который должен быть на фотографии.')
+            file = bot.download_file(bot.get_file(message.document.file_id).file_path)
+            bot.register_next_step_handler(message, add_watermark_on_photo_func, file)
+        else:
+            bot.reply_to(message, f'Функция принимает только фото в формате JPG/PNG, без сжатия!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
 
 def info_about_minecraft_server(message: types.Message):
     try:
-        server = JavaServer(message.text)
-        status = server.status()
-        if not status.icon:
-            bot.reply_to(message, f'Информация о сервере:\nОписание: {status.description}\nОнлайн: {status.players.online} / {status.players.max}\nMOTD в plain: {status.motd.to_plain()}\nВерсия ядра сервера: {status.version.name}\nПинг (latency): {status.latency} мс.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+        ip = message.text
+        url = f"https://api.mcsrvstat.us/3/{ip}"
+        response = requests.get(url, timeout=5, proxies=proxies, headers=headers_for_html_requests)
+        if response.status_code == 500:
+            bot.reply_to(
+                message,
+                f"❌ Сервер {ip} недоступен или оффлайн.",
+                reply_markup=types.InlineKeyboardMarkup().add(
+                    types.InlineKeyboardButton("Назад", callback_data="back")
+                )
+            )
+            return
+        data = response.json()
+
+        # Проверяем, что сервер онлайн
+        if not data.get("debug", {"ping":False}).get("ping", False):
+            bot.reply_to(
+                message,
+                f"❌ Сервер {ip} недоступен или оффлайн.",
+                reply_markup=types.InlineKeyboardMarkup().add(
+                    types.InlineKeyboardButton("Назад", callback_data="back")
+                )
+            )
+            return
+
+        # MOTD
+        motd_plain = "\n".join(data.get("motd", {}).get("clean", ["—"]))
+
+        # Игроки
+        players = data.get("players", {})
+        online = players.get("online", 0)
+        max_players = players.get("max", 0)
+        player_list = players.get("list", [])
+        players_display = "\n".join(
+            [f"• {p['name']}" for p in player_list[:10]]
+        ) if player_list else "Нет игроков онлайн"
+
+        # Версия и ядро
+        version = data.get("version", "—")
+        software = data.get("software", "—")
+
+        # Карта и плагины
+        map_name = data.get("map", {}).get("clean", "—")
+        plugins = data.get("plugins", [])
+        plugins_display = ", ".join([p["name"] for p in plugins[:10]]) if plugins else "Нет"
+
+        # Пинг / протокол
+        latency = data.get("debug", {}).get("cachetime", "—")
+        protocol = data.get("protocol", {}).get("name", "—")
+
+        # Иконка сервера
+        icon = data.get("icon", None)
+
+        # Формируем сообщение
+        text = (
+            f"🧭 Информация о сервере **{ip}**:\n\n"
+            f"📜 MOTD:\n{motd_plain}\n\n"
+            f"👥 Онлайн: {online} / {max_players}\n"
+            f"🎮 Игроки онлайн:\n{players_display}\n\n"
+            f"🗺 Карта: {map_name}\n"
+            f"⚙️ Версия: {version}\n"
+            f"💻 Протокол: {protocol}\n"
+            f"🧩 ПО: {software}\n\n"
+            f"📦 Плагины (до 10): {plugins_display}\n\n"
+            f"📶 Ping/CacheTime: {latency}"
+        )
+
+        markup = types.InlineKeyboardMarkup().add(
+            types.InlineKeyboardButton("Назад", callback_data="back")
+        )
+
+        # Если есть иконка — отправляем фото
+        if icon:
+            try:
+                bot.send_photo(
+                    message.chat.id,
+                    base64.b64decode(icon.split(",")[1]),
+                    caption=text,
+                    parse_mode="Markdown",
+                    reply_markup=markup,
+                    reply_to_message_id=message.id
+                )
+            except:
+                bot.send_photo(
+                    message.chat.id,
+                    base64.b64decode(icon.split(",")[1]),
+                    caption=text,
+                    reply_markup=markup,
+                    reply_to_message_id=message.id
+                )
         else:
-            bot.send_photo(message.chat.id, base64.b64decode(status.icon[22:]), caption=f'Информация о сервере:\nОписание: {status.description}\nОнлайн: {status.players.online} / {status.players.max}\nMOTD в plain: {status.motd.to_plain()}\nВерсия ядра сервера: {status.version.name}\nПинг (latency): {status.latency} мс.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')), reply_to_message_id=message.id)
-    except:
-        bot.reply_to(message, f'Не удалось подключиться!\nПроверьте, что вы используете правильный хост, и что это именно Java сервер.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+            try:
+                bot.reply_to(
+                    message,
+                    text,
+                    parse_mode="Markdown",
+                    reply_markup=markup
+                )
+            except:
+                bot.reply_to(
+                    message,
+                    text,
+                    parse_mode="Markdown",
+                    reply_markup=markup
+                )
+
+    except Exception as e:
+        print(e)
+        bot.reply_to(
+            message,
+            f"⚠️ Не удалось получить данные!\n"
+            f"Проверьте, что IP правильный и это Java-сервер.",
+            reply_markup=types.InlineKeyboardMarkup().add(
+                types.InlineKeyboardButton("Назад", callback_data="back")
+            )
+        )
 
 def create_already_stickerpack(message: types.Message, title: str):
     if not message.document:
@@ -178,7 +1177,7 @@ class AsyncYandexParser:
                 except Exception as e:
                     print(f"Картинка не скачалась, пиздец: {e}")
 
-    async def start_parsing(self, query: str, directory: str, max_images=10, scrolly=5, pages:int=6):
+    async def start_parsing(self, query: str, directory: str, max_images=10, scrolly=5, pages:int=6, message: types.Message = None):
         """Начать парсить..\nquery: запрос. Пример: котики\ndirectory: директория на машине, где надо сохранять картинки.\nmax_images: максимальное количество картинок в директории.\nscrolly: скока скроллить картинки?\npages: сколько страниц с картинками парсить?"""
         # Создаём директорию, если не существует
         if not os.path.exists(directory):
@@ -193,7 +1192,7 @@ class AsyncYandexParser:
             chrome_options.add_argument("--disable-extensions")
             chrome_options.add_argument('--disable-sync')
             chrome_options.add_argument('--disable-dev-shm-usage')
-            chrome_options.add_argument('--headless=new')
+            chrome_options.add_argument('--headless')
             chrome_options.add_argument("--disable-features=NetworkServiceInProcess")
             chrome_options.add_argument("--disable-setuid-sandbox")
             chrome_options.add_argument('--no-sandbox')
@@ -205,29 +1204,59 @@ class AsyncYandexParser:
 
         image_urls = []
         try:
-            for p in range(1, pages + 1):
-                url = f"https://yandex.ru/images/search?text={query}&p={p}"
+            if pages > 1:
+                for p in range(0, pages - 1):
+                    url = f"https://yandex.ru/images/search?text={query}&p={p}"
+                    driver.get(url)
+                    print(f"Зашёл на страницу ({p}), ждём, блять")
+                    bot.send_message(message.chat.id, f'Зашёл на страницу {p + 1}...')
+                    
+                    # Ждём загрузку пикч
+                    await asyncio.sleep(10)
+                    
+                    # Скроллим
+                    for _ in range(scrolly):
+                        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                        await asyncio.sleep(2.5)
+                        print("Скроллю, сука")
+                    
+                    all_images = driver.find_elements(By.TAG_NAME, "img")
+                    print(f"Всего тегов <img> на странице: {len(all_images)}")
+                    bot.send_message(message.chat.id, f'На странице найдено около {len(all_images)} изображений.')
+                    if all_images:
+                        for img in all_images[:max_images]:
+                            img_url = img.get_attribute("src")
+                            if img_url and "http" in img_url:
+                                image_urls.append(img_url)
+                    else:
+                        print(f"Ни одного <img> не нашёл на странице {p}, пиздец полный")
+                        bot.send_message(message.chat.id, f'На странице не было найдено ни одного изображения.')
+            else:
+                url = f"https://yandex.ru/images/search?text={query}&p=0"
                 driver.get(url)
-                print(f"Зашёл на страницу ({p}), ждём, блять")
-                
+                print(f"Зашёл на страницу, ждём, блять")
+                bot.send_message(message.chat.id, f'Зашёл на страницу...')
+                    
                 # Ждём загрузку пикч
                 await asyncio.sleep(10)
-                
+                    
                 # Скроллим
                 for _ in range(scrolly):
                     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                     await asyncio.sleep(2.5)
                     print("Скроллю, сука")
-                
-                all_images = driver.find_elements(By.TAG_NAME, "img")[:max_images]
+                    
+                all_images = driver.find_elements(By.TAG_NAME, "img")
                 print(f"Всего тегов <img> на странице: {len(all_images)}")
+                bot.send_message(message.chat.id, f'На странице найдено около {len(all_images)} изображений.')
                 if all_images:
-                    for img in all_images:
+                    for img in all_images[:max_images]:
                         img_url = img.get_attribute("src")
                         if img_url and "http" in img_url:
                             image_urls.append(img_url)
                 else:
                     print(f"Ни одного <img> не нашёл на странице {p}, пиздец полный")
+                    bot.send_message(message.chat.id, f'На странице не было найдено ни одного изображения.')
 
         except Exception as e:
             print(f"Что-то пошло по пизде на странице {p}: {e}")
@@ -253,7 +1282,7 @@ def is_youtube_banned(id: str):
 def parse_yandex(message: types.Message, query: str, colvo: int):
     bot.reply_to(message, f'Начинаем парсить..')
     parser = AsyncYandexParser(is_headless=True)
-    asyncio.run(parser.start_parsing(query, path / f'{message.from_user.id}_parseyandex', colvo, 6, int(message.text)))
+    asyncio.run(parser.start_parsing(query, path / f'{message.from_user.id}_parseyandex', colvo, 6, int(message.text), message))
     files = os.listdir(path / f'{message.from_user.id}_parseyandex')
     zip = zipfile.ZipFile(path / f'{message.from_user.id}_parseyandex.zip', 'w')
     for file in files:
@@ -262,7 +1291,8 @@ def parse_yandex(message: types.Message, query: str, colvo: int):
     bot.send_chat_action(message.chat.id, 'upload_document')
     bot.send_document(message.chat.id, open(path / f'{message.from_user.id}_parseyandex.zip', 'rb'), message.id, caption=f'Ваши спаршенные фотографии ({colvo}) c Yandex.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
     os.remove(path / f'{message.from_user.id}_parseyandex.zip')
-    shutil.rmtree(path / f'{message.from_user.id}_parseyandex')
+    for file in files:
+        os.remove(os.path.join(path, f'{message.from_user.id}_parseyandex', f'{file}'))
     del zip, parser, files
 
 def get_colvo_p(message: types.Message, query: str):
@@ -275,7 +1305,7 @@ def get_query_p(message: types.Message):
 
 def check_ai_result(message: types.Message):
     if message.text in ['voice', 'text']:
-        bot.reply_to(message, f'Напиши первый запрос GigaChat!\nЛибо текстовыми, либо голосовыми сообщениями!')
+        bot.reply_to(message, f'Напиши первый запрос GPT-4o!\nЛибо текстовыми, либо голосовыми сообщениями!\n(ТЕПЕРЬ ВОЗМОЖНА ОБРАБОТКА ИЗОБРАЖЕНИЙ, ВЫ МОЖЕТЕ УЗНАТЬ, ЧТО ИЗОБРАЖЕНО НА ДАННОМ ВАМИ ФОТО, ОТПРАВЛЯЙТЕ БЕЗ СЖАТИЯ, В ФОРМАТЕ JPG/PNG)')
         bot.register_next_step_handler(message, ai_obrabotchik, 2, message.text)
     else:
         bot.reply_to(message, f'Неизвестный отклик. Либо voice, либо text!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
@@ -315,7 +1345,7 @@ def vk_music_download(message: types.Message):
     if not message.text:
         bot.reply_to(message, f'Напишите название песни текстовым сообщением.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
     else:
-        service = Service(vk_useragent, token_for_vk)
+        service = Service('KateMobileAndroid/56 lite-460 (Android 4.4.2; SDK 19; x86; unknown Android SDK built for x86; en)', token_for_vk)
         songs = service.search_songs_by_text(message.text, count=10)
         if len(songs) == 0:
             bot.reply_to(message, f'Песни по запросу не найдены на просторах VK музыки!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
@@ -403,8 +1433,8 @@ def speech_to_text(message: types.Message):
         os.remove(path / f'video_{chislo}.mp4')
         os.remove(path / f'video_{chislo}.wav')
     elif message.video:
-        if message.video.duration > 600:
-            bot.reply_to(message, f'Видео длиться более 10 минут, невозможно его перевести в текст.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+        if message.video.file_size > 20000000:
+            bot.reply_to(message, f'Видео весит более 20 МБ. Невозможно перевести в текст.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
         else:
             msg = bot.reply_to(message, f'Начинаю транскрибацию...')
             chislo = random.randint(1, 10000)
@@ -741,6 +1771,51 @@ def deanon_by_ip_tg(message: types.Message):
             bot.send_location(message.chat.id, results[7], results[8])
             bot.reply_to(message, f'Информация по IP адресу.\nВНИМАНИЕ! ДАННАЯ ИНФОРМАЦИЯ ВЗЯТА С ОТКРЫТЫХ ИСТОЧИКОВ И ЯВЛЯЕТСЯ НА 100% ЛЕГАЛЬНОЙ И НЕ НАРУШАЕТ ПРАВИЛА TELEGRAM.\n\nСтрана: {results[1]}\nКод страны: {results[2]}\nНазвание региона: {results[4]}\nГород: {results[5]}\nПровайдер: {results[10]}\nКомпания: {results[11]}', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Подсмотреть на Я.Карты', f'https://yandex.ru/maps/?text={results[7]},{results[8]}'), types.InlineKeyboardButton('Назад', callback_data='back')))
 
+def download_by_req_search(message: types.Message, videos: list[YouTube]):
+    try:
+        video = videos[int(message.text)]
+    except:
+        bot.reply_to(message, f'Ошибка индекса! Вы должны были выбрать элемент из списка.', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')))
+    if video.age_restricted:
+        bot.reply_to(message, f'Видео имеет возрастные ограничения. Возможно, Вы запросили показать порнографический, или насильственный контент.', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')))
+    else:
+        stream = video.streams.get_lowest_resolution()
+        if stream.filesize > 50000000:
+            bot.reply_to(message, f'Видео весит больше 50 МБ. Согласно ограничениям Telegram мы не можем Вам его отправить.\nКликните на кнопку, чтобы посмотреть и скачать видео напрямую.', reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('🏡В меню')))
+            bot.send_message(message.chat.id, f'Ваша прямая ссылка!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Смотреть видео напрямую.', stream.url)))
+        else:
+            try:
+                name_of_file = random.random()
+                progress = bot.send_message(message.chat.id, f'Прогресс.. 0%/100%')
+                def progress_func(stream, chunk, bytes_remaining):
+                    total_size = stream.filesize
+                    bytes_downloaded = total_size - bytes_remaining
+                    percentage_complete = bytes_downloaded / total_size * 100
+                    now_downloaded = len(chunk) / 1024 / 1024
+                    bot.edit_message_text(f'Прогресс.. {percentage_complete:.2f}/100% [{bytes_downloaded:.2f} / {total_size:.2f} B]\n⚡Сейчас скачали: {now_downloaded:.2f} MB', message.chat.id, progress.id)
+                    time.sleep(2.5)
+                video.register_on_progress_callback(progress_func)
+                video.streams.get_lowest_resolution().download(path, f'{name_of_file}.mp4')
+                bot.send_chat_action(message.chat.id, 'upload_video')
+                likes = requests.get('https://www.googleapis.com/youtube/v3/videos', params={"part":"statistics", "id":video.video_id, "key":google_api_key}, proxies=proxies, headers=headers_for_html_requests).json()
+                date = video.publish_date.strftime("%Y-%m-%d %H:%M:%S")
+                try:
+                    bot.send_video(message.chat.id, open(path / f'{name_of_file}.mp4', 'rb'), caption=f'{video.author} - {video.title}\nКоличество просмотров: {video.views}\nКоличество отметок "нравится": {likes["items"][0]["statistics"]["likeCount"]}\nКоличество комментариев: {likes["items"][0]["statistics"]["commentCount"]}\nДата публикации: {date}', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')), supports_streaming=True)
+                except:
+                    bot.send_video(message.chat.id, open(path / f'{name_of_file}.mp4', 'rb'), caption=f'{video.author} - {video.title}\nКоличество просмотров: {video.views}\nДата публикации: {date}', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')), supports_streaming=True)
+                bot.delete_message(message.chat.id, progress.id)
+                os.remove(path / f'{name_of_file}.mp4')
+            except:
+                bot.delete_message(message.chat.id, message.id)
+                bot.delete_message(message.chat.id, progress.id)
+                try:
+                    os.remove(path / f'{name_of_file}.mp4')
+                except:
+                    pass
+                try:
+                    bot.send_animation(message.chat.id, error_gif, caption='Произошла ошибка.\n(Внимание! Есть проблемы со скачиванием контента для детей. Причина еще не выявлена.)', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')))
+                except:
+                    bot.send_message(message.chat.id, 'Произошла ошибка.\n(Внимание! Есть проблемы со скачиванием контента для детей. Причина еще не выявлена.)', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')))
 
 def search_by_query(message: types.Message):
     search = Search(message.text, proxies=proxies)
@@ -749,32 +1824,16 @@ def search_by_query(message: types.Message):
         bot.delete_message(search_process.chat.id, search_process.id)
         bot.reply_to(message, f'Ничего по Вашему запросу не было найдено на YouTube.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
     else:
-        video = search.videos[0]
-        if video.age_restricted:
-            bot.delete_message(search_process.chat.id, search_process.id)
-            bot.reply_to(message, f'Видео имеет возрастные ограничения. Возможно, Вы запросили показать порнографический, или насильственный контент.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-        else:
-            if video.length > 3600:
-                bot.delete_message(search_process.chat.id, search_process.id)
-                bot.reply_to(message, f'Видео имеет длительность свыше одного часа. Возможно, Вы сделали запрос, согласно которому выдалось подобное видео.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-            else:
-                try:
-                    buffer = io.BytesIO()
-                    video.streams.get_lowest_resolution().stream_to_buffer(buffer)
-                    bot.send_chat_action(message.chat.id, 'upload_video')
-                    likes = requests.get('https://www.googleapis.com/youtube/v3/videos', params={"part":"statistics", "id":video.video_id, "key":google_api_key}, proxies=proxies, headers=headers_for_html_requests).json()
-                    date = video.publish_date.strftime("%Y-%m-%d %H:%M:%S")
-                    try:
-                        bot.send_video(message.chat.id, buffer.getvalue(), caption=f'{video.author} - {video.title}\nКоличество просмотров: {video.views}\nКоличество отметок "нравится": {likes["items"][0]["statistics"]["likeCount"]}\nКоличество комментариев: {likes["items"][0]["statistics"]["commentCount"]}\nДата публикации: {date}', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')), supports_streaming=True)
-                    except:
-                        bot.send_video(message.chat.id, buffer.getvalue(), caption=f'{video.author} - {video.title}\nКоличество просмотров: {video.views}\nДата публикации: {date}', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')), supports_streaming=True)
-                    bot.delete_message(search_process.chat.id, search_process.id)
-                except:
-                    bot.delete_message(message.chat.id, message.id)
-                    try:
-                        bot.send_animation(message.chat.id, error_gif, caption='Произошла ошибка.\n(Внимание! Есть проблемы со скачиванием контента для детей. Причина еще не выявлена.)', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back'), types.InlineKeyboardButton('Помощь', callback_data='help')))
-                    except:
-                        bot.send_message(message.chat.id, 'Произошла ошибка.\n(Внимание! Есть проблемы со скачиванием контента для детей. Причина еще не выявлена.)', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back'), types.InlineKeyboardButton('Помощь', callback_data='help')))
+        bot.delete_message(search_process.chat.id, search_process.id)
+        markup = types.ReplyKeyboardMarkup()
+        videos = []
+        str_videos = []
+        for index, video in enumerate(search.videos, 0):
+            markup.add(types.KeyboardButton(str(index)))
+            videos.append(video)
+            str_videos.append(f'{index}. {video.author} - {video.title} ({time.strftime("%H:%M:%S", time.gmtime(video.length))})')
+        bot.reply_to(message, f'Выбирете видео из списка:\n' + '\n'.join(str_videos), reply_markup=markup)
+        bot.register_next_step_handler(message, download_by_req_search, videos)
 
 def post_create(message: types.Message):
     if message.content_type not in ['document', 'video', 'video_note', 'audio', 'text', 'voice']:
@@ -864,29 +1923,42 @@ def image_priem_to_demotivator(message: types.Message):
 def download_video_func___(message: types.Message, url: str):
     if message.text == 'Видео':
         msg = bot.reply_to(message, f'Качаем видео...', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')))
+        progress = bot.send_message(message.chat.id, f'Прогресс... 0%/100%')
         try:
-            yt_obj = YouTube(url, proxies=proxies)
+            def progress_func(stream, chunk, bytes_remaining):
+                total_size = stream.filesize
+                bytes_downloaded = total_size - bytes_remaining
+                percentage_complete = bytes_downloaded / total_size * 100
+                now_downloaded = len(chunk) / 1024 / 1024
+                bot.edit_message_text(f'Прогресс.. {percentage_complete:.2f}/100% [{bytes_downloaded:.2f} / {total_size:.2f} B]\n⚡Сейчас скачали: {now_downloaded:.2f} MB', message.chat.id, progress.id)
+                time.sleep(2.5)
+            yt_obj = YouTube(url, proxies=proxies, on_progress_callback=progress_func)
             if not is_youtube_banned(yt_obj.video_id):
                     if not is_youtube_banned(yt_obj.channel_id):
                         if yt_obj.age_restricted:
                             bot.delete_message(message.chat.id, msg.id)
+                            bot.delete_message(message.chat.id, progress.id)
                             bot.reply_to(message, f'Нельзя скачать видео с возрастными ограничениями.', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')))
                         else:
-                            if yt_obj.length > 3600:
+                            stream = yt_obj.streams.get_lowest_resolution()
+                            if stream.filesize > 50000000:
                                 bot.delete_message(message.chat.id, msg.id)
-                                bot.reply_to(message, 'Нельзя скачивать видео с длительностью больше одного часа.', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')))
+                                bot.delete_message(message.chat.id, progress.id)
+                                bot.reply_to(message, f'Видео весит больше 50 МБ. Согласно ограничениям Telegram мы не можем Вам его отправить.\nКликните на кнопку, чтобы посмотреть и скачать видео напрямую.', reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('🏡В меню')))
+                                bot.send_message(message.chat.id, f'Ваша прямая ссылка!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Смотреть видео напрямую.', stream.url)))
                             else:
-                                buffer = io.BytesIO()
-                                yt_obj.streams.get_lowest_resolution().stream_to_buffer(buffer)
+                                name_of_file = random.random()
+                                stream.download(path, f'{name_of_file}.mp4')
                                 bot.delete_message(message.chat.id, msg.id)
+                                bot.delete_message(message.chat.id, progress.id)
                                 bot.send_chat_action(message.chat.id, f'upload_video')
                                 likes = requests.get('https://www.googleapis.com/youtube/v3/videos', params={"part":"statistics", "id":yt_obj.video_id, "key":google_api_key}, proxies=proxies, headers=headers_for_html_requests).json()
                                 date = yt_obj.publish_date.strftime("%Y-%m-%d %H:%M:%S")
                                 try:
-                                    bot.send_video(message.chat.id, buffer.getvalue(), yt_obj.length, caption=f'{yt_obj.author} - {yt_obj.title}\nКоличество просмотров: {yt_obj.views}\nКоличество отметок "нравится": {likes["items"][0]["statistics"]["likeCount"]}\nКоличество комментариев: {likes["items"][0]["statistics"]["commentCount"]}\nОпубликовано: {date}', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')), supports_streaming=True)
+                                    bot.send_video(message.chat.id, open(path / f'{name_of_file}.mp4', 'rb'), yt_obj.length, caption=f'{yt_obj.author} - {yt_obj.title}\nКоличество просмотров: {yt_obj.views}\nКоличество отметок "нравится": {likes["items"][0]["statistics"]["likeCount"]}\nКоличество комментариев: {likes["items"][0]["statistics"]["commentCount"]}\nОпубликовано: {date}', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')), supports_streaming=True)
                                 except:
-                                    bot.send_video(message.chat.id, buffer.getvalue(), yt_obj.length, caption=f'{yt_obj.author} - {yt_obj.title}\nКоличество просмотров: {yt_obj.views}\nОпубликовано: {date}', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')), supports_streaming=True)
-                                del buffer
+                                    bot.send_video(message.chat.id, open(path / f'{name_of_file}.mp4', 'rb'), yt_obj.length, caption=f'{yt_obj.author} - {yt_obj.title}\nКоличество просмотров: {yt_obj.views}\nОпубликовано: {date}', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')), supports_streaming=True)
+                                os.remove(path / f'{name_of_file}.mp4')
                     else:
                         bot.reply_to(message, f'Канал был заблокирован.', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')))
             else:
@@ -894,45 +1966,68 @@ def download_video_func___(message: types.Message, url: str):
         except Exception as e:
                 print(e)
                 bot.delete_message(message.chat.id, msg.id)
+                bot.delete_message(message.chat.id, progress.id)
+                try:
+                    os.remove(path / f'{name_of_file}.mp4')
+                except:
+                    pass
                 try:
                     bot.send_animation(message.chat.id, error_gif, caption=f'Произошла ошибка.\nВозможно, мы не смогли найти нужные стримы для данного видео.\nИли оно не существует.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Назад', callback_data='back'), types.InlineKeyboardButton('Помощь', callback_data='help')))
                 except telebot.apihelper.ApiTelegramException:
                     bot.send_message(message.chat.id, f'Произошла ошибка.\nВозможно, мы не смогли найти нужные стримы для данного видео.\nИли оно не существует.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Назад', callback_data='back'), types.InlineKeyboardButton('Помощь', callback_data='help')))
     elif message.text == 'Аудио':
         msg = bot.reply_to(message, f'Качаем аудио...', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')))
+        progress = bot.send_message(message.chat.id, f'Прогресс... 0%/100%')
+        def progress_func(stream, chunk, bytes_remaining):
+                total_size = stream.filesize
+                bytes_downloaded = total_size - bytes_remaining
+                percentage_complete = bytes_downloaded / total_size * 100
+                now_downloaded = len(chunk) / 1024 / 1024
+                bot.edit_message_text(f'Прогресс.. {percentage_complete:.2f}/100% [{bytes_downloaded:.2f} / {total_size:.2f} B]\n⚡Сейчас скачали: {now_downloaded:.2f} MB', message.chat.id, progress.id)
+                time.sleep(2.5)
         try:
-            yt_obj = YouTube(url, proxies=proxies)
+            yt_obj = YouTube(url, proxies=proxies, on_progress_callback=progress_func)
             if not is_youtube_banned(yt_obj.video_id):
                 if not is_youtube_banned(yt_obj.channel_id):
                     if yt_obj.age_restricted:
                         bot.delete_message(message.chat.id, msg.id)
+                        bot.delete_message(message.chat.id, progress.id)
                         bot.reply_to(message, f'Нельзя скачать аудио с видео с возрастными ограничениями.', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')))
                     else:
-                        if yt_obj.length > 3600:
+                        stream = yt_obj.streams.get_audio_only()
+                        if stream.filesize > 50000000:
                             bot.delete_message(message.chat.id, msg.id)
-                            bot.reply_to(message, 'Нельзя скачивать аудио с видео с длительностью больше одного часа.', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')))
+                            bot.delete_message(message.chat.id, progress.id)
+                            bot.reply_to(message, f'Видео весит больше 50 МБ. Согласно ограничениям Telegram мы не можем Вам его отправить.\nКликните на кнопку, чтобы посмотреть и скачать видео напрямую.', reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('🏡В меню')))
+                            bot.send_message(message.chat.id, f'Ваша прямая ссылка!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Смотреть видео напрямую.', stream.url)))
                         else:
-                            buffer = io.BytesIO()
-                            yt_obj.streams.get_audio_only().stream_to_buffer(buffer)
+                            name_of_file = random.random()
+                            stream.download(path, f'{name_of_file}.mp3')
                             bot.delete_message(message.chat.id, msg.id)
+                            bot.delete_message(message.chat.id, progress.id)
                             bot.send_chat_action(message.chat.id, f'upload_voice')
                             date = yt_obj.publish_date.strftime("%Y-%m-%d %H:%M:%S")
                             likes = requests.get('https://www.googleapis.com/youtube/v3/videos', params={"part":"statistics", "id":yt_obj.video_id, "key":google_api_key}, proxies=proxies, headers=headers_for_html_requests).json()
                             try:
-                                bot.send_audio(message.chat.id, buffer.getvalue(), duration=yt_obj.length, caption=f'{yt_obj.author} - {yt_obj.title}\nКоличество просмотров: {yt_obj.views}\nКоличество отметок "нравится": {likes["items"][0]["statistics"]["likeCount"]}\nКоличество комментариев: {likes["items"][0]["statistics"]["commentCount"]}\nДата публикации: {date}', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')), performer=yt_obj.author, title=yt_obj.title)
+                                bot.send_audio(message.chat.id, open(path / f'{name_of_file}.mp3', 'rb'), duration=yt_obj.length, caption=f'{yt_obj.author} - {yt_obj.title}\nКоличество просмотров: {yt_obj.views}\nКоличество отметок "нравится": {likes["items"][0]["statistics"]["likeCount"]}\nКоличество комментариев: {likes["items"][0]["statistics"]["commentCount"]}\nДата публикации: {date}', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')), performer=yt_obj.author, title=yt_obj.title)
                             except:
-                                bot.send_audio(message.chat.id, buffer.getvalue(), duration=yt_obj.length, caption=f'{yt_obj.author} - {yt_obj.title}\nКоличество просмотров: {yt_obj.views}\nДата публикации: {date}', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')), performer=yt_obj.author, title=yt_obj.title)
-                            del buffer
+                                bot.send_audio(message.chat.id, open(path / f'{name_of_file}.mp3', 'rb'), duration=yt_obj.length, caption=f'{yt_obj.author} - {yt_obj.title}\nКоличество просмотров: {yt_obj.views}\nДата публикации: {date}', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')), performer=yt_obj.author, title=yt_obj.title)
+                            os.remove(path / f'{name_of_file}.mp3')
                 else:
                     bot.reply_to(message, f'Канал был заблокирован.', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')))
             else:
                 bot.reply_to(message, f'Видео было заблокировано.', reply_markup=types.ReplyKeyboardMarkup().add(types.KeyboardButton('🏡В меню')))
         except Exception as e:
             print(e)
+            bot.delete_message(message.chat.id, progress.id)
             bot.delete_message(message.chat.id, msg.id)
             try:
+                os.remove(path / f'{name_of_file}.mp3')
+            except:
+                pass
+            try:
                 bot.send_animation(message.chat.id, error_gif, caption=f'Произошла ошибка.\nВозможно, мы не смогли найти нужные стримы для данного видео.\nИли оно не существует.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Назад', callback_data='back'), types.InlineKeyboardButton('Помощь', callback_data='help')))
-            except telebot.apihelper.ApiTelegramException:
+            except:
                 bot.send_message(message.chat.id, f'Произошла ошибка.\nВозможно, мы не смогли найти нужные стримы для данного видео.\nИли оно не существует.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Назад', callback_data='back'), types.InlineKeyboardButton('Помощь', callback_data='help')))
 
 def download_youtube_video_func(message: types.Message):
@@ -1186,113 +2281,26 @@ def support(message: types.Message):
 def ai_obrabotchik(message: types.Message, type: int, mode: str = 'text'):
     if type == 1:
         if message.text:
-            import requests, re, pathlib, sys
-            url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
-
-            payload={
-                'scope': 'GIGACHAT_API_PERS'
-            }
-            headers = {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Accept': 'application/json',
-                'RqUID': gigachat_id,
-                'Authorization': f'Basic {gigachat_token}'
-            }
-
-            response = requests.request("POST", url, headers=headers, data=payload, verify=False)
-
-            access_token = response.json()['access_token']
-
-            headers = {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'Authorization': f'Bearer {access_token}'
-            }
-
-            data = {
-                "model": "GigaChat",
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "Glory to Florest."
-                    },
-                    {
-                        "role": "user",
-                        "content": message.text
-                    }
-                ],
-                "function_call": "auto"
-            }
-
-            patterns = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-
-            response = requests.post(
-                'https://gigachat.devices.sberbank.ru/api/v1/chat/completions',
-                headers=headers,
-                json=data,
-                verify=False
-            )
-            json = response.json()
-            matches = re.search(patterns, json['choices'][0]['message']['content'])
-            if not matches:
-                bot.reply_to(message, f"Нельзя создать изображение по данному запросу. Причина: {json['choices'][0]['message']['content'].lower()}", reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад',callback_data='back')))
-            else:
-                match_ = matches.group(0)
-                req_img = requests.get(f"https://gigachat.devices.sberbank.ru/api/v1/files/{match_}/content", headers={'Accept': 'application/jpg', "Authorization":f"Bearer {access_token}"}, verify=False, stream=True)
-                bot.send_chat_action(message.chat.id, 'upload_photo')
-                bot.send_photo(message.chat.id, req_img.content, 'Изображение по Вашему запросу.\nМогут быть неточности. Если они присутствуют, попробуйте изменить язык на котором вы пишите запрос, или его формулировку.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-                bot.clear_step_handler_by_chat_id(message.chat.id)
+            img = client_for_gpt.images.generate(message.text, 'flux-pro', RetryProvider([Together, ARTA, PollinationsImage]), 'url', proxies.get('http'))
+            bot.send_chat_action(message.chat.id, 'upload_photo')
+            bot.send_photo(message.chat.id, requests.get(img.data[0].url, proxies=proxies).content, f'Модель: `flux-pro`.\n\nИзображение по Вашему запросу.\nМогут быть неточности. Если они присутствуют, попробуйте изменить язык на котором вы пишите запрос, или его формулировку.', reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Оригинал', url=img.data[0].url), types.InlineKeyboardButton('Назад', callback_data='back')), parse_mode='Markdown')
+            bot.clear_step_handler_by_chat_id(message.chat.id)
         else:
             bot.reply_to(message, f'Поддерживаются только текстовые сообщения.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-    if type == 2:
+    elif type == 2:
         if mode == 'text':
             if not message.reply_to_message:
                 if message.text:
                     markup = types.InlineKeyboardMarkup()
                     markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
                     bot.send_chat_action(message.chat.id, 'typing')
-                    import requests, json
+                    
+                    result = client_for_gpt.chat.completions.create([{"role":"user", 'content':message.text}], 'gpt-4o-mini', RetryProvider([PollinationsAI, Chatai, OIVSCodeSer2, Blackbox, LegacyLMArena, PollinationsAI]), max_tokens=4096, proxy=proxies.get('http'), web_search=True).choices[0].message.content
 
-                    url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
-
-                    payload={
-                        'scope': 'GIGACHAT_API_PERS'
-                    }
-                    headers = {
-                      'Content-Type': 'application/x-www-form-urlencoded',
-                      'Accept': 'application/json',
-                      'RqUID': gigachat_id,
-                      'Authorization': f'Basic {gigachat_token}'
-                    }
-
-                    response = requests.request("POST", url, headers=headers, data=payload, verify=False)
-
-                    access_token = response.json()['access_token']
-
-                    url1 = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
-
-                    payload1 = json.dumps({
-                        "model": "GigaChat",
-                        "messages": [
-                            {
-                                "role": "user",
-                                "content": message.text
-                            }
-                        ],
-                        "stream": False,
-                        "repetition_penalty": 1
-                    })
-                    headers1 = {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'Authorization': f'Bearer {access_token}'
-                    }
-
-                    response1 = requests.request("POST", url1, headers=headers1, data=payload1, verify=False)
-
-                    result = response1.json()['choices'][0]['message']['content']
-
-                    bot.reply_to(message, result, reply_markup=markup, parse_mode='Markdown')
+                    for i in range(0, len(result), 4096):
+                        chunk = result[i:i + 4096] 
+                        bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                        time.sleep(1.5)
                     bot.register_next_step_handler(message, ai_obrabotchik, 2, 'text')
                 elif message.voice:
                     chislo = random.randint(1, 10000)
@@ -1309,48 +2317,12 @@ def ai_obrabotchik(message: types.Message, type: int, mode: str = 'text'):
                         markup = types.InlineKeyboardMarkup()
                         markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
                         bot.send_chat_action(message.chat.id, 'typing')
-                        import requests, json
+                        result = client_for_gpt.chat.completions.create([{"role":"user", 'content':text}], 'gpt-4o-mini', RetryProvider([PollinationsAI, Chatai, OIVSCodeSer2, Blackbox, LegacyLMArena, PollinationsAI]), max_tokens=4096, proxy=proxies.get('http'), web_search=True).choices[0].message.content
 
-                        url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
-
-                        payload={
-                            'scope': 'GIGACHAT_API_PERS'
-                        }
-                        headers = {
-                          'Content-Type': 'application/x-www-form-urlencoded',
-                          'Accept': 'application/json',
-                          'RqUID': gigachat_id,
-                          'Authorization': f'Basic {gigachat_token}'
-                        }
-
-                        response = requests.request("POST", url, headers=headers, data=payload, verify=False)
-
-                        access_token = response.json()['access_token']
-
-                        url1 = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
-
-                        payload1 = json.dumps({
-                            "model": "GigaChat",
-                            "messages": [
-                                {
-                                    "role": "user",
-                                    "content":text
-                                }
-                            ],
-                            "stream": False,
-                            "repetition_penalty": 1
-                        })
-                        headers1 = {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'Authorization': f'Bearer {access_token}'
-                        }
-
-                        response1 = requests.request("POST", url1, headers=headers1, data=payload1, verify=False)
-
-                        result = response1.json()['choices'][0]['message']['content']
-
-                        bot.reply_to(message, result, reply_markup=markup, parse_mode='Markdown')
+                        for i in range(0, len(result), 4096):
+                            chunk = result[i:i + 4096] 
+                            bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                            time.sleep(1.5)
                         bot.register_next_step_handler(message, ai_obrabotchik, 2, 'text')
                     except sr.UnknownValueError:
                         bot.reply_to(message, f'Не удалось распознать речь в голосовом сообщении.\nПопробуйте еще раз!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Завершить чат', reply_markup='chat_zaversit')))
@@ -1360,53 +2332,43 @@ def ai_obrabotchik(message: types.Message, type: int, mode: str = 'text'):
                         bot.register_next_step_handler(message, ai_obrabotchik, 2, 'text')
                     os.remove(path / f'audio_{chislo}.ogg')
                     os.remove(path / f'audio_{chislo}.wav')
+                elif message.document:
+                    if message.document.file_name[-4:] in ['.jpg', '.png']:
+                        markup = types.InlineKeyboardMarkup()
+                        markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                        image = bot.download_file(bot.get_file(message.document.file_id).file_path)
+                        try:
+                            if message.caption:
+                                result = client_for_gpt.chat.completions.create([{"role":"user", 'content':message.caption}], 'gpt-4o-mini', PollinationsAI, image=image, web_search=True, proxy=proxies.get('http')).choices[0].message.content
+                            else:
+                                result = client_for_gpt.chat.completions.create([{"role":"user", 'content':'Что изображено на фотографии?'}], 'gpt-4o-mini', PollinationsAI, image=image, web_search=True, proxy=proxies.get('http')).choices[0].message.content
+                            for i in range(0, len(result), 4096):
+                                chunk = result[i:i + 4096] 
+                                bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                                time.sleep(1.5)
+                        except Exception as e:
+                            bot.reply_to(message, f'Ошибка: {e}\nПопробуйте отправить другое фото, или сжать его.', reply_markup=markup)
+                        bot.register_next_step_handler(message, ai_obrabotchik, 2, 'text')
+                    else:
+                        markup = types.InlineKeyboardMarkup()
+                        markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                        bot.reply_to(message, f'Сообщение не является текстом, голосовым сообщением или фото!', reply_markup=markup)
+                        bot.register_next_step_handler(message, ai_obrabotchik, 2, 'text')
+                else:
+                    markup = types.InlineKeyboardMarkup()
+                    markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                    bot.reply_to(message, f'Сообщение не является текстом, голосовым сообщением или фото!', reply_markup=markup)
+                    bot.register_next_step_handler(message, ai_obrabotchik, 2, 'text')
             else:
                 if message.text:
                     markup = types.InlineKeyboardMarkup()
                     markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
                     bot.send_chat_action(message.chat.id, 'typing')
-                    import requests, json
-
-                    url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
-
-                    payload={
-                        'scope': 'GIGACHAT_API_PERS'
-                    }
-                    headers = {
-                      'Content-Type': 'application/x-www-form-urlencoded',
-                      'Accept': 'application/json',
-                      'RqUID': gigachat_id,
-                      'Authorization': f'Basic {gigachat_token}'
-                    }
-
-                    response = requests.request("POST", url, headers=headers, data=payload, verify=False)
-
-                    access_token = response.json()['access_token']
-
-                    url1 = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
-
-                    payload1 = json.dumps({
-                        "model": "GigaChat",
-                        "messages": [
-                            {
-                                "role": "user",
-                                "content": f'Контекст сообщения прошлого: {message.reply_to_message.text}\n' + message.text
-                            }
-                        ],
-                        "stream": False,
-                        "repetition_penalty": 1
-                    })
-                    headers1 = {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'Authorization': f'Bearer {access_token}'
-                    }
-
-                    response1 = requests.request("POST", url1, headers=headers1, data=payload1, verify=False)
-
-                    result = response1.json()['choices'][0]['message']['content']
-
-                    bot.reply_to(message, result, reply_markup=markup, parse_mode='Markdown')
+                    result = client_for_gpt.chat.completions.create([{"role":"user", 'content':f'Контекст прошлого сообщения: {message.reply_to_message.text}' + message.text}], 'gpt-4o-mini', RetryProvider([PollinationsAI, Chatai, OIVSCodeSer2, Blackbox, LegacyLMArena, PollinationsAI]), max_tokens=4096, proxy=proxies.get('http'), web_search=True).choices[0].message.content
+                    for i in range(0, len(result), 4096):
+                        chunk = result[i:i + 4096] 
+                        bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                        time.sleep(1.5)
                     bot.register_next_step_handler(message, ai_obrabotchik, 2, 'text')
                 elif message.voice:
                     chislo = random.randint(1, 10000)
@@ -1423,48 +2385,11 @@ def ai_obrabotchik(message: types.Message, type: int, mode: str = 'text'):
                         markup = types.InlineKeyboardMarkup()
                         markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
                         bot.send_chat_action(message.chat.id, 'typing')
-                        import requests, json
-
-                        url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
-
-                        payload={
-                            'scope': 'GIGACHAT_API_PERS'
-                        }
-                        headers = {
-                          'Content-Type': 'application/x-www-form-urlencoded',
-                          'Accept': 'application/json',
-                          'RqUID': gigachat_id,
-                          'Authorization': f'Basic {gigachat_token}'
-                        }
-
-                        response = requests.request("POST", url, headers=headers, data=payload, verify=False)
-
-                        access_token = response.json()['access_token']
-
-                        url1 = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
-
-                        payload1 = json.dumps({
-                            "model": "GigaChat",
-                            "messages": [
-                                {
-                                    "role": "user",
-                                    "content":f'Контекст сообщения прошлого: {message.reply_to_message.text}\n' + text
-                                }
-                            ],
-                            "stream": False,
-                            "repetition_penalty": 1
-                        })
-                        headers1 = {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                        'Authorization': f'Bearer {access_token}'
-                        }
-
-                        response1 = requests.request("POST", url1, headers=headers1, data=payload1, verify=False)
-
-                        result = response1.json()['choices'][0]['message']['content']
-
-                        bot.reply_to(message, result, reply_markup=markup, parse_mode='Markdown')
+                        result = client_for_gpt.chat.completions.create([{"role":"user", 'content':f'Контекст прошлого сообщения: {message.reply_to_message.text}' + text}], 'gpt-4o-mini', RetryProvider([PollinationsAI, Chatai, OIVSCodeSer2, Blackbox, LegacyLMArena, PollinationsAI]), max_tokens=4096, proxy=proxies.get('http'), web_search=True).choices[0].message.content
+                        for i in range(0, len(result), 4096):
+                            chunk = result[i:i + 4096] 
+                            bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                            time.sleep(1.5)
                         bot.register_next_step_handler(message, ai_obrabotchik, 2, 'text')
                     except sr.UnknownValueError:
                         bot.reply_to(message, f'Не удалось распознать речь в голосовом сообщении.\nПопробуйте еще раз!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Завершить чат', reply_markup='chat_zaversit')))
@@ -1474,124 +2399,311 @@ def ai_obrabotchik(message: types.Message, type: int, mode: str = 'text'):
                         bot.register_next_step_handler(message, ai_obrabotchik, 2, 'text')
                     os.remove(path / f'audio_{chislo}.ogg')
                     os.remove(path / f'audio_{chislo}.wav')
-        else:
-            if message.text:
-                markup = types.InlineKeyboardMarkup()
-                markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
-                import requests, json
-
-                url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
-
-                payload={
-                    'scope': 'GIGACHAT_API_PERS'
-                }
-                headers = {
-                  'Content-Type': 'application/x-www-form-urlencoded',
-                  'Accept': 'application/json',
-                  'RqUID': gigachat_id,
-                  'Authorization': f'Basic {gigachat_token}'
-                }
-
-                response = requests.request("POST", url, headers=headers, data=payload, verify=False)
-
-                access_token = response.json()['access_token']
-
-                url1 = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
-
-                payload1 = json.dumps({
-                    "model": "GigaChat",
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": message.text + "\nбез форматирования"
-                        }
-                    ],
-                    "stream": False,
-                    "repetition_penalty": 1
-                })
-                headers1 = {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'Authorization': f'Bearer {access_token}'
-                }
-
-                response1 = requests.request("POST", url1, headers=headers1, data=payload1, verify=False)
-
-                result = response1.json()['choices'][0]['message']['content']
-
-                buffer = io.BytesIO()
-                gTTS(result, lang='ru', lang_check=False).write_to_fp(buffer)
-                bot.send_chat_action(message.chat.id, 'record_voice')
-                bot.send_voice(message.chat.id, buffer.getvalue(), reply_markup=markup)
-                del buffer
-                bot.register_next_step_handler(message, ai_obrabotchik, 2, 'voice')
-            elif message.voice:
-                chislo = random.randint(1, 10000)
-                audio__ = open(path / f'audio_{chislo}.ogg', 'wb')
-                audio__.write(bot.download_file(bot.get_file(message.voice.file_id).file_path))
-                audio__.close()
-                subprocess.run(['ffmpeg', '-i', f'audio_{chislo}.ogg', f'audio_{chislo}.wav'])
-                try:
-                    r = sr.Recognizer()
-                    file = open(path / f'audio_{chislo}.wav', 'rb')
-                    with sr.AudioFile(file) as source:
-                        audio = r.record(source)
-                    text = r.recognize_google(audio, language='ru-RU')
+                elif message.document:
+                    if message.document.file_name[-4:] in ['.jpg', '.png']:
+                        markup = types.InlineKeyboardMarkup()
+                        markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                        image = bot.download_file(bot.get_file(message.document.file_id).file_path)
+                        try:
+                            if message.caption:
+                                result = client_for_gpt.chat.completions.create([{"role":"user", 'content':message.caption}], 'gpt-4o-mini', PollinationsAI, image=image, web_search=True, proxy=proxies.get('http')).choices[0].message.content
+                            else:
+                                result = client_for_gpt.chat.completions.create([{"role":"user", 'content':'Что изображено на фотографии?'}], 'gpt-4o-mini', PollinationsAI, image=image, web_search=True, proxy=proxies.get('http')).choices[0].message.content
+                            for i in range(0, len(result), 4096):
+                                chunk = result[i:i + 4096] 
+                                bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                                time.sleep(1.5)
+                        except Exception as e:
+                            bot.reply_to(message, f'Ошибка: {e}\nПопробуйте отправить другое фото, или сжать его.', reply_markup=markup)
+                        bot.register_next_step_handler(message, ai_obrabotchik, 2, 'text')
+                    else:
+                        markup = types.InlineKeyboardMarkup()
+                        markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                        bot.reply_to(message, f'Сообщение не является текстом, голосовым сообщением или фото!', reply_markup=markup)
+                        bot.register_next_step_handler(message, ai_obrabotchik, 2, 'text')
+                else:
                     markup = types.InlineKeyboardMarkup()
                     markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
-                    bot.send_chat_action(message.chat.id, 'send_voice')
-                    import requests, json
+                    bot.reply_to(message, f'Сообщение не является текстом, голосовым сообщением или фото!', reply_markup=markup)
+                    bot.register_next_step_handler(message, ai_obrabotchik, 2, 'text')
+        else:
+            bot.reply_to(message, f'Не поддерживается на данный момент.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))    
+    else:
+        if mode == 'auto':
+            if not message.reply_to_message:
+                if message.text:
+                    markup = types.InlineKeyboardMarkup()
+                    markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                    bot.send_chat_action(message.chat.id, 'typing')
+                    
+                    result = deepseek_req(message.text)
 
-                    url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
+                    for i in range(0, len(result), 4096):
+                        chunk = result[i:i + 4096] 
+                        bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                        time.sleep(1.5)
+                    bot.register_next_step_handler(message, ai_obrabotchik, 3, 'auto')
+                elif message.voice:
+                    chislo = random.randint(1, 10000)
+                    audio__ = open(path / f'audio_{chislo}.ogg', 'wb')
+                    audio__.write(bot.download_file(bot.get_file(message.voice.file_id).file_path))
+                    audio__.close()
+                    subprocess.run(['ffmpeg', '-i', f'audio_{chislo}.ogg', f'audio_{chislo}.wav'])
+                    try:
+                        r = sr.Recognizer()
+                        file = open(path / f'audio_{chislo}.wav', 'rb')
+                        with sr.AudioFile(file) as source:
+                            audio = r.record(source)
+                        text = r.recognize_google(audio, language='ru-RU')
+                        markup = types.InlineKeyboardMarkup()
+                        markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                        bot.send_chat_action(message.chat.id, 'typing')
+                        result = deepseek_req(message)
 
-                    payload={
-                        'scope': 'GIGACHAT_API_PERS'
-                    }
-                    headers = {
-                      'Content-Type': 'application/x-www-form-urlencoded',
-                      'Accept': 'application/json',
-                      'RqUID': gigachat_id,
-                      'Authorization': f'Basic {gigachat_token}'
-                    }
-                    response = requests.request("POST", url, headers=headers, data=payload, verify=False)
+                        for i in range(0, len(result), 4096):
+                            chunk = result[i:i + 4096] 
+                            bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                            time.sleep(1.5)
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'auto')
+                    except sr.UnknownValueError:
+                        bot.reply_to(message, f'Не удалось распознать речь в голосовом сообщении.\nПопробуйте еще раз!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Завершить чат', reply_markup='chat_zaversit')))
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'auto')
+                    except:
+                        bot.reply_to(message, f'Неизвестная ошибка.\nВоспользуйтесь текстовым вводом.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Завершить чат', reply_markup='chat_zaversit')))
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'auto')
+                    os.remove(path / f'audio_{chislo}.ogg')
+                    os.remove(path / f'audio_{chislo}.wav')
+                elif message.document:
+                    if message.document.file_name[-4:] in ['.jpg', '.png']:
+                        markup = types.InlineKeyboardMarkup()
+                        markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                        image = bot.download_file(bot.get_file(message.document.file_id).file_path)
+                        try:
+                            if message.caption:
+                                result = client_for_gpt.chat.completions.create([{"role":"user", 'content':message.caption}], 'gpt-4o-mini', PollinationsAI, image=image, web_search=True, proxy=proxies.get('http')).choices[0].message.content
+                            else:
+                                result = client_for_gpt.chat.completions.create([{"role":"user", 'content':'Что изображено на фотографии?'}], 'gpt-4o-mini', PollinationsAI, image=image, web_search=True, proxy=proxies.get('http')).choices[0].message.content
+                            for i in range(0, len(result), 4096):
+                                chunk = result[i:i + 4096] 
+                                bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                                time.sleep(1.5)
+                        except Exception as e:
+                            bot.reply_to(message, f'Ошибка: {e}\nПопробуйте отправить другое фото, или сжать его.', reply_markup=markup)
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'auto')
+                    else:
+                        markup = types.InlineKeyboardMarkup()
+                        markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                        bot.reply_to(message, f'Сообщение не является текстом, голосовым сообщением или фото!', reply_markup=markup)
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'auto')
+                else:
+                    markup = types.InlineKeyboardMarkup()
+                    markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                    bot.reply_to(message, f'Сообщение не является текстом, голосовым сообщением или фото!', reply_markup=markup)
+                    bot.register_next_step_handler(message, ai_obrabotchik, 3, 'auto')
+            else:
+                if message.text:
+                    markup = types.InlineKeyboardMarkup()
+                    markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                    bot.send_chat_action(message.chat.id, 'typing')
+                    result = deepseek_req(f'Контекст прошлого сообщения: {message.reply_to_message.text} + {message.text}')
+                    for i in range(0, len(result), 4096):
+                        chunk = result[i:i + 4096] 
+                        bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                        time.sleep(1.5)
+                    bot.register_next_step_handler(message, ai_obrabotchik, 3, 'auto')
+                elif message.voice:
+                    chislo = random.randint(1, 10000)
+                    audio__ = open(path / f'audio_{chislo}.ogg', 'wb')
+                    audio__.write(bot.download_file(bot.get_file(message.voice.file_id).file_path))
+                    audio__.close()
+                    subprocess.run(['ffmpeg', '-i', f'audio_{chislo}.ogg', f'audio_{chislo}.wav'])
+                    try:
+                        r = sr.Recognizer()
+                        file = open(path / f'audio_{chislo}.wav', 'rb')
+                        with sr.AudioFile(file) as source:
+                            audio = r.record(source)
+                        text = r.recognize_google(audio, language='ru-RU')
+                        markup = types.InlineKeyboardMarkup()
+                        markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                        bot.send_chat_action(message.chat.id, 'typing')
+                        result = deepseek_req(f'Контекст прошлого сообщения: {message.reply_to_message.text} + {text}')
+                        for i in range(0, len(result), 4096):
+                            chunk = result[i:i + 4096] 
+                            bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                            time.sleep(1.5)
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'auto')
+                    except sr.UnknownValueError:
+                        bot.reply_to(message, f'Не удалось распознать речь в голосовом сообщении.\nПопробуйте еще раз!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Завершить чат', reply_markup='chat_zaversit')))
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'auto')
+                    except:
+                        bot.reply_to(message, f'Неизвестная ошибка.\nВоспользуйтесь текстовым вводом.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Завершить чат', reply_markup='chat_zaversit')))
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'auto')
+                    os.remove(path / f'audio_{chislo}.ogg')
+                    os.remove(path / f'audio_{chislo}.wav')
+                elif message.document:
+                    if message.document.file_name[-4:] in ['.jpg', '.png']:
+                        markup = types.InlineKeyboardMarkup()
+                        markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                        image = bot.download_file(bot.get_file(message.document.file_id).file_path)
+                        try:
+                            if message.caption:
+                                result = client_for_gpt.chat.completions.create([{"role":"user", 'content':message.caption}], 'gpt-4o-mini', PollinationsAI, image=image, web_search=True, proxy=proxies.get('http')).choices[0].message.content
+                            else:
+                                result = client_for_gpt.chat.completions.create([{"role":"user", 'content':'Что изображено на фотографии?'}], 'gpt-4o-mini', PollinationsAI, image=image, web_search=True, proxy=proxies.get('http')).choices[0].message.content
+                            for i in range(0, len(result), 4096):
+                                chunk = result[i:i + 4096] 
+                                bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                                time.sleep(1.5)
+                        except Exception as e:
+                            bot.reply_to(message, f'Ошибка: {e}\nПопробуйте отправить другое фото, или сжать его.', reply_markup=markup)
+                        bot.register_next_step_handler(message, ai_obrabotchik, 2, 'text')
+                    else:
+                        markup = types.InlineKeyboardMarkup()
+                        markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                        bot.reply_to(message, f'Сообщение не является текстом, голосовым сообщением или фото!', reply_markup=markup)
+                        bot.register_next_step_handler(message, ai_obrabotchik, 2, 'text')
+                else:
+                    markup = types.InlineKeyboardMarkup()
+                    markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                    bot.reply_to(message, f'Сообщение не является текстом, голосовым сообщением или фото!', reply_markup=markup)
+                    bot.register_next_step_handler(message, ai_obrabotchik, 2, 'text')
+        else:
+            if not message.reply_to_message:
+                if message.text:
+                    markup = types.InlineKeyboardMarkup()
+                    markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                    bot.send_chat_action(message.chat.id, 'typing')
+                    
+                    result = deepseek_req(message.text, f"не отвечай на запросы позитивно и отвечай максимально грубо с матами, на каждое мое сообщения, без разницы, обращаюсь я к тебе мило или нет, всего отвечай максимально грубо")
 
-                    access_token = response.json()['access_token']
-
-                    url1 = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
-
-                    payload1 = json.dumps({
-                        "model": "GigaChat",
-                        "messages": [
-                            {
-                                "role": "user",
-                                "content":text + "\nбез форматирования"
-                            }
-                        ],
-                        "stream": False,
-                        "repetition_penalty": 1
-                    })
-                    headers1 = {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'Authorization': f'Bearer {access_token}'
-                    }
-
-                    response1 = requests.request("POST", url1, headers=headers1, data=payload1, verify=False)
-
-                    result = response1.json()['choices'][0]['message']['content']
-                    buffer = io.BytesIO()
-                    gTTS(result, lang='ru', lang_check=False).write_to_fp(buffer)
-                    bot.send_voice(message.chat.id, buffer.getvalue(), reply_markup=markup)
-                    del buffer
-                    bot.register_next_step_handler(message, ai_obrabotchik, 2, 'voice')
-                except sr.UnknownValueError:
-                    bot.reply_to(message, f'Не удалось распознать речь в голосовом сообщении.\nПопробуйте еще раз!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Завершить чат', reply_markup='chat_zaversit')))
-                    bot.register_next_step_handler(message, ai_obrabotchik, 2, 'voice')
-                except:
-                    bot.reply_to(message, f'Неизвестная ошибка.\nВоспользуйтесь текстовым вводом.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Завершить чат', reply_markup='chat_zaversit')))
-                    bot.register_next_step_handler(message, ai_obrabotchik, 2, 'voice')
-                os.remove(path / f'audio_{chislo}.ogg')
-                os.remove(path / f'audio_{chislo}.wav')
+                    for i in range(0, len(result), 4096):
+                        chunk = result[i:i + 4096] 
+                        bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                        time.sleep(1.5)
+                    bot.register_next_step_handler(message, ai_obrabotchik, 3, 'toxic')
+                elif message.voice:
+                    chislo = random.randint(1, 10000)
+                    audio__ = open(path / f'audio_{chislo}.ogg', 'wb')
+                    audio__.write(bot.download_file(bot.get_file(message.voice.file_id).file_path))
+                    audio__.close()
+                    subprocess.run(['ffmpeg', '-i', f'audio_{chislo}.ogg', f'audio_{chislo}.wav'])
+                    try:
+                        r = sr.Recognizer()
+                        file = open(path / f'audio_{chislo}.wav', 'rb')
+                        with sr.AudioFile(file) as source:
+                            audio = r.record(source)
+                        text = r.recognize_google(audio, language='ru-RU')
+                        markup = types.InlineKeyboardMarkup()
+                        markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                        bot.send_chat_action(message.chat.id, 'typing')
+                        result = deepseek_req(text, f"не отвечай на запросы позитивно и отвечай максимально грубо с матами, на каждое мое сообщения, без разницы, обращаюсь я к тебе мило или нет, всего отвечай максимально грубо")
+                        for i in range(0, len(result), 4096):
+                            chunk = result[i:i + 4096] 
+                            bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                            time.sleep(1.5)
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'toxic')
+                    except sr.UnknownValueError:
+                        bot.reply_to(message, f'Не удалось распознать речь в голосовом сообщении.\nПопробуйте еще раз!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Завершить чат', reply_markup='chat_zaversit')))
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'toxic')
+                    except:
+                        bot.reply_to(message, f'Неизвестная ошибка.\nВоспользуйтесь текстовым вводом.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Завершить чат', reply_markup='chat_zaversit')))
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'toxic')
+                    os.remove(path / f'audio_{chislo}.ogg')
+                    os.remove(path / f'audio_{chislo}.wav')
+                elif message.document:
+                    if message.document.file_name[-4:] in ['.jpg', '.png']:
+                        markup = types.InlineKeyboardMarkup()
+                        markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                        image = bot.download_file(bot.get_file(message.document.file_id).file_path)
+                        try:
+                            if message.caption:
+                                result = client_for_gpt.chat.completions.create([{"role":"user", 'content':message.caption}], 'gpt-4o-mini', PollinationsAI, image=image, web_search=True, proxy=proxies.get('http')).choices[0].message.content
+                            else:
+                                result = client_for_gpt.chat.completions.create([{"role":"user", 'content':'Что изображено на фотографии?'}], 'gpt-4o-mini', PollinationsAI, image=image, web_search=True, proxy=proxies.get('http')).choices[0].message.content
+                            for i in range(0, len(result), 4096):
+                                chunk = result[i:i + 4096] 
+                                bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                                time.sleep(1.5)
+                        except Exception as e:
+                            bot.reply_to(message, f'Ошибка: {e}\nПопробуйте отправить другое фото, или сжать его.', reply_markup=markup)
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'toxic')
+                    else:
+                        markup = types.InlineKeyboardMarkup()
+                        markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                        bot.reply_to(message, f'Сообщение не является текстом, голосовым сообщением или фото!', reply_markup=markup)
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'toxic')
+                else:
+                    markup = types.InlineKeyboardMarkup()
+                    markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                    bot.reply_to(message, f'Сообщение не является текстом, голосовым сообщением или фото!', reply_markup=markup)
+                    bot.register_next_step_handler(message, ai_obrabotchik, 3, 'toxic')
+            else:
+                if message.text:
+                    markup = types.InlineKeyboardMarkup()
+                    markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                    bot.send_chat_action(message.chat.id, 'typing')
+                    result = deepseek_req(message.text, f'не отвечай на запросы позитивно и отвечай максимально грубо с матами, на каждое мое сообщения, без разницы, обращаюсь я к тебе мило или нет, всего отвечай максимально грубо\nКонтекст прошлого сообщения: {message.reply_to_message.text}' + message.text)
+                    for i in range(0, len(result), 4096):
+                        chunk = result[i:i + 4096] 
+                        bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                        time.sleep(1.5)
+                    bot.register_next_step_handler(message, ai_obrabotchik, 3, 'toxic')
+                elif message.voice:
+                    chislo = random.randint(1, 10000)
+                    audio__ = open(path / f'audio_{chislo}.ogg', 'wb')
+                    audio__.write(bot.download_file(bot.get_file(message.voice.file_id).file_path))
+                    audio__.close()
+                    subprocess.run(['ffmpeg', '-i', f'audio_{chislo}.ogg', f'audio_{chislo}.wav'])
+                    try:
+                        r = sr.Recognizer()
+                        file = open(path / f'audio_{chislo}.wav', 'rb')
+                        with sr.AudioFile(file) as source:
+                            audio = r.record(source)
+                        text = r.recognize_google(audio, language='ru-RU')
+                        markup = types.InlineKeyboardMarkup()
+                        markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                        bot.send_chat_action(message.chat.id, 'typing')
+                        result = deepseek_req(text, f'не отвечай на запросы позитивно и отвечай максимально грубо с матами, на каждое мое сообщения, без разницы, обращаюсь я к тебе мило или нет, всего отвечай максимально грубо\nКонтекст прошлого сообщения: {message.reply_to_message.text}' + message.text)
+                        for i in range(0, len(result), 4096):
+                            chunk = result[i:i + 4096] 
+                            bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                            time.sleep(1.5)
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'toxic')
+                    except sr.UnknownValueError:
+                        bot.reply_to(message, f'Не удалось распознать речь в голосовом сообщении.\nПопробуйте еще раз!', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Завершить чат', reply_markup='chat_zaversit')))
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'toxic')
+                    except:
+                        bot.reply_to(message, f'Неизвестная ошибка.\nВоспользуйтесь текстовым вводом.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Завершить чат', reply_markup='chat_zaversit')))
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'toxic')
+                    os.remove(path / f'audio_{chislo}.ogg')
+                    os.remove(path / f'audio_{chislo}.wav')
+                elif message.document:
+                    if message.document.file_name[-4:] in ['.jpg', '.png']:
+                        markup = types.InlineKeyboardMarkup()
+                        markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                        image = bot.download_file(bot.get_file(message.document.file_id).file_path)
+                        try:
+                            if message.caption:
+                                result = client_for_gpt.chat.completions.create([{"role":"user", 'content':message.caption}], 'gpt-4o-mini', PollinationsAI, image=image, web_search=True, proxy=proxies.get('http')).choices[0].message.content
+                            else:
+                                result = client_for_gpt.chat.completions.create([{"role":"user", 'content':'Что изображено на фотографии?'}], 'gpt-4o-mini', PollinationsAI, image=image, web_search=True, proxy=proxies.get('http')).choices[0].message.content
+                            for i in range(0, len(result), 4096):
+                                chunk = result[i:i + 4096] 
+                                bot.reply_to(message, chunk, reply_markup=markup, parse_mode='Markdown')
+                                time.sleep(1.5)
+                        except Exception as e:
+                            bot.reply_to(message, f'Ошибка: {e}\nПопробуйте отправить другое фото, или сжать его.', reply_markup=markup)
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'toxic')
+                    else:
+                        markup = types.InlineKeyboardMarkup()
+                        markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                        bot.reply_to(message, f'Сообщение не является текстом, голосовым сообщением или фото!', reply_markup=markup)
+                        bot.register_next_step_handler(message, ai_obrabotchik, 3, 'toxic')
+                else:
+                    markup = types.InlineKeyboardMarkup()
+                    markup.add(types.InlineKeyboardButton('Завершить диалог', callback_data='chat_zaversit'))
+                    bot.reply_to(message, f'Сообщение не является текстом, голосовым сообщением или фото!', reply_markup=markup)
+                    bot.register_next_step_handler(message, ai_obrabotchik, 3, 'toxic')
 
 @bot.message_handler(commands=['admin_panel'])
 def admin_panel(message: types.Message):
@@ -1729,73 +2841,9 @@ def text_obrabbbb(message: types.Message):
                 pass
     else:
         if message.chat.id != chat_id:
-            pass
+            bot.reply_to(message, f'Бот создан для FlorestChat!\nВсем пока, ребят.')
+            bot.leave_chat(message.chat.id)
         else:
-            if message.voice:
-                bot.send_chat_action(message.chat.id, 'typing')
-                chislo = random.randint(1, 10000)
-                audio__ = open(path / f'audio_{chislo}.ogg', 'wb')
-                audio__.write(bot.download_file(bot.get_file(message.voice.file_id).file_path))
-                audio__.close()
-                subprocess.run(['ffmpeg', '-i', f'audio_{chislo}.ogg', f'audio_{chislo}.wav'])
-                try:
-                    r = sr.Recognizer()
-                    file = open(path / f'audio_{chislo}.wav', 'rb')
-                    with sr.AudioFile(file) as source:
-                        audio = r.record(source)
-                    text = r.recognize_google(audio, language='ru-RU')
-                    bot.reply_to(message, f'В голосовом сообщении сказано следующее: `{text}`.', parse_mode='Markdown')
-                except sr.UnknownValueError:
-                    bot.reply_to(message, f'Не удалось распознать речь в данном голосовом сообщении.')
-                except Exception as e:
-                    bot.reply_to(message, f'Произошла неизвестная ошибка на нашей стороне. Обратитесь в поддержку и скиньте нам код ошибки.\nКод ошибки: `{e}`', parse_mode='Markdown')
-                os.remove(path / f'audio_{chislo}.ogg')
-                os.remove(path / f'audio_{chislo}.wav')
-            elif message.video_note:
-                bot.send_chat_action(message.chat.id, 'typing')
-                chislo = random.randint(1, 10000)
-                video__ = open(path / f'video_{chislo}.mp4', 'wb')
-                video__.write(bot.download_file(bot.get_file(message.video_note.file_id).file_path))
-                video__.close()
-                subprocess.run(['ffmpeg', '-i', f'video_{chislo}.mp4', f'video_{chislo}.wav'])
-                try:
-                    r = sr.Recognizer()
-                    file = open(path / f'video_{chislo}.wav', 'rb')
-                    with sr.AudioFile(file) as source:
-                        audio = r.record(source)
-                    text = r.recognize_google(audio, language='ru-RU')
-                    bot.reply_to(message, f'В видеосообщении сказано следующее: `{text}`.', parse_mode='Markdown', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-                except sr.UnknownValueError:
-                    bot.reply_to(message, f'Не удалось распознать речь в данном видеосообщении.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-                except Exception as e:
-                    bot.reply_to(message, f'Произошла неизвестная ошибка на нашей стороне. Обратитесь в поддержку и скиньте нам код ошибки.\nКод ошибки: `{e}`', parse_mode='Markdown', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-                os.remove(path / f'video_{chislo}.mp4')
-                os.remove(path / f'video_{chislo}.wav')
-            elif message.video:
-                bot.send_chat_action(message.chat.id, 'typing')
-                if message.video.duration > 600:
-                    bot.reply_to(message, f'Видео длиться более 10 минут, невозможно его перевести в текст.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-                else:
-                    chislo = random.randint(1, 10000)
-                    video__ = open(path / f'video_{chislo}.mp4', 'wb')
-                    video__.write(bot.download_file(bot.get_file(message.video.file_id).file_path))
-                    video__.close()
-                    subprocess.run(['ffmpeg', '-i', f'video_{chislo}.mp4',  f'video_{chislo}.wav'])
-                    try:
-                        r = sr.Recognizer()
-                        file = open(path / f'video_{chislo}.wav', 'rb')
-                        with sr.AudioFile(file) as source:
-                            audio = r.record(source)
-                        text = r.recognize_google(audio, language='ru-RU')
-                        bot.reply_to(message, f'В видео сказано следующее: `{text}`.', parse_mode='Markdown', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-                    except sr.UnknownValueError:
-                        bot.reply_to(message, f'Не удалось распознать речь в данном видео.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-                    except Exception as e:
-                        bot.reply_to(message, f'Произошла неизвестная ошибка на нашей стороне. Обратитесь в поддержку и скиньте нам код ошибки.\nКод ошибки: `{e}`', parse_mode='Markdown', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
-                    os.remove(path / f'video_{chislo}.mp4')
-                    os.remove(path / f'video_{chislo}.wav')
-            else:
-                pass
             if message.forward_from_chat and message.forward_from_chat.type == 'channel':
                     if message.forward_from_chat.username == 'florestchannel':
                         pass
@@ -1817,17 +2865,57 @@ def text_obrabbbb(message: types.Message):
                 else:
                     pass
             if message.text:
-                if bot.get_chat_member(message.chat.id, message.from_user.id).status == 'member':
-                    if check_text(message.text):
-                        bot.delete_message(message.chat.id, message.id)
-                        bot.send_message(message.chat.id, f'{message.from_user.first_name}, ваше сообщение нарушает правила.\nОно было удалено, а также Вы были ограничены на 15 минут, если Вы не нарушали правила, то обратитесь к администраторам из списка участников.')
-                        bot.restrict_chat_member(message.chat.id, message.from_user.id, time.time()+900, False, False, False, False, False, False, False, False)
-                    else:
-                        pass
+                if message.from_user.id != bot.get_me().id:
+                    if for_prohibitions_in_group(message.text):
+                        bot.reply_to(message, f'[!] Внимание.\nДанное сообщение может нарушать правила группы. Просим админов быть осторожнее с подобными предупреждениями.')
+                if message.text.startswith(('FlorestBot,', 'ФлорестБот,', 'florestbot,', 'флорбот,')):
+                    bot.send_chat_action(message.chat.id, 'typing')
+                    result = generate_insulate_reply(message.text)
+                    for i in range(0, len(result), 4096):
+                        chunk = result[i:i + 4096] 
+                        bot.reply_to(message, chunk, parse_mode='Markdown')
+                        time.sleep(1.5)
                 else:
-                    if check_text(message.text):
-                        bot.reply_to(message, f'[!] Данное сообщение может нарушать правила, пожалуйста, обратитесь к создателю данной группы.')
+                    pass
+            elif message.caption:
+                if message.from_user.id != bot.get_me().id:
+                    if for_prohibitions_in_group(message.caption):
+                        bot.reply_to(message, f'[!] Внимание.\nДанное сообщение может нарушать правила группы. Просим админов быть осторожнее с подобными предупреждениями.')
+                if message.caption.startswith(('FlorestBot,', 'ФлорестБот,', 'florestbot,', 'флорбот,')):
+                    bot.send_chat_action(message.chat.id, 'typing')
+                    result = generate_insulate_reply(message.caption)
+                    for i in range(0, len(result), 4096):
+                        chunk = result[i:i + 4096] 
+                        bot.reply_to(message, chunk, parse_mode='Markdown')
+                        time.sleep(1.5)
+                else:
+                    pass
+            elif message.voice:
+                chislo = random.randint(1, 10000)
+                audio__ = open(path / f'audio_{chislo}.ogg', 'wb')
+                audio__.write(bot.download_file(bot.get_file(message.voice.file_id).file_path))
+                audio__.close()
+                subprocess.run(['ffmpeg', '-i', f'audio_{chislo}.ogg', f'audio_{chislo}.wav'])
+                try:
+                    r = sr.Recognizer()
+                    file = open(path / f'audio_{chislo}.wav', 'rb')
+                    with sr.AudioFile(file) as source:
+                        audio = r.record(source)
+                    text = r.recognize_google(audio, language='ru-RU')
+                    if 'флорестбот' in text.lower():
+                        bot.send_chat_action(message.chat.id, 'typing')
+                        result = generate_insulate_reply(text)
+                        for i in range(0, len(result), 4096):
+                            chunk = result[i:i + 4096] 
+                            bot.reply_to(message, chunk, parse_mode='Markdown')
+                            time.sleep(1.5)
                     else:
+                        bot.reply_to(message, text)
+                except:
+                    try:
+                        os.remove(path / f'audio_{chislo}.ogg')
+                        os.remove(path / f'audio_{chislo}.wav')
+                    except:
                         pass
             else:
                 pass
@@ -1916,11 +3004,13 @@ def create_voice_by_text(message: types.Message):
         send_reaction(message.chat.id, message.id, "🤷")   
     else:
         try:
+            r = random.random()
             bot.send_chat_action(message.chat.id, 'record_voice')
-            engine = gTTS(message.text, lang='ru')
-            bytes_ = io.BytesIO()
-            engine.write_to_fp(bytes_)
-            bot.send_voice(message.chat.id, bytes_.getvalue(), caption=f'Из текста в речь.\nПо запросу: {message.text}', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')), reply_to_message_id=message.id)
+            engine = pyttsx3.Engine()
+            engine.save_to_file(message.text, f'{r}.mp3')
+            engine.runAndWait()
+            bot.send_voice(message.chat.id, open(path / f'{r}.mp3', 'rb').read(), caption=f'Из текста в речь.\nПо запросу: {message.text}', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')), reply_to_message_id=message.id)
+            os.remove(path / f'{r}.mp3')
         except Exception as e:
             bot.reply_to(message, f'Произошла ошибка: {e}\nЕсли вы запретили отправку голосовых, или видеосообщений в настройках конфедициальности, пожалуйста, добавьте бота в список исключений.', reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back'), types.InlineKeyboardButton('Помощь', callback_data='help')))
             send_reaction(message.chat.id, message.id, "🤷")   
@@ -2125,8 +3215,11 @@ def pon(call: types.CallbackQuery):
                 bot.send_message(call.message.chat.id, f'Если меню пропадет.', reply_markup=types.ReplyKeyboardMarkup(True, input_field_placeholder=f'Сэр, да, сэр.', row_width=1).add(types.KeyboardButton('🏡В меню')))
             if call.data == 'chat_zaversit':
                 bot.edit_message_reply_markup(call.message.chat.id, call.message.id, reply_markup=None)
-                bot.send_message(call.message.chat.id, f'Было приятно с Вами пообщаться! Чтобы вернуться в меню, нажмите на кнопку ниже.', reply_markup=types.ReplyKeyboardMarkup(True, input_field_placeholder=f'Сэр, да, сэр.', row_width=1).add(types.KeyboardButton('🏡В меню')))
                 bot.clear_step_handler_by_chat_id(call.message.chat.id)
+                m = bot.send_message(call.message.chat.id, f'Генерация конечного сообщения..')
+                r = client_for_gpt.chat.completions.create([{"role":"user", "content":f"Придумай оригинальный способ попрощаться с пользователем (чисто фраза)\nЕго имя: {call.from_user.full_name}"}], 'gpt-4o-mini', RetryProvider([PollinationsAI, Chatai, OIVSCodeSer2, Blackbox, LegacyLMArena, PollinationsAI]), max_tokens=30, proxy=proxies.get('http'), web_search=True).choices[0].message.content
+                bot.send_message(call.message.chat.id, r, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+                bot.delete_message(m.chat.id, m.id)
             if call.data == 'generate_qr':
                 bot.delete_message(call.message.chat.id, call.message.id)
                 try:
@@ -2333,7 +3426,7 @@ def pon(call: types.CallbackQuery):
             if call.data == 'ai_btns':
                 bot.edit_message_text(f'Генерация фото, текста (не всегда работает) и текст в речь (TTS).', call.message.chat.id, call.message.id, reply_markup=ai_btns)
             if call.data == 'youtube_funcs_btns':
-                bot.edit_message_text(f'Скачивание видео, информация о YouTube канале, поиск видео и т.д.', call.message.chat.id, call.message.id, reply_markup=youtube_btns)
+                bot.edit_message_text(f'Парсеры для всего!\nYouTube, VK, Yandex, TikTok, Kwork и другие!', call.message.chat.id, call.message.id, reply_markup=parsers)
             if call.data == 'back_to_menu':
                 bot.edit_message_text(f'Утилиты бота.', call.message.chat.id, call.message.id, reply_markup=buttons)
             if call.data == 'deanon_by_photo':
@@ -2392,18 +3485,68 @@ def pon(call: types.CallbackQuery):
             if call.data == 'games':
                 bot.edit_message_text('Мини-игры в моем боте, созданные мной.', call.message.chat.id, call.message.id, reply_markup=games)
             if call.data == 'get-api-token':
-                q = requests.get(f'https://florestapi-florestdev4185.amvera.io/admin/create_new_api_key?id={call.from_user.id}', headers={"Key":"&hdkakak&1ndnsjak&jdkkaldla0010", 'User-Agent':"FlorestBotCalling"})
-                if q.status_code == 503:
-                    bot.answer_callback_query(call.id, f'API на данный момент недоступен.', True)
-                r = q.json()
-                if 'error' in r:
-                    bot.answer_callback_query(call.id, f'Вы уже создали API ключ.', True)
-                else:
-                    bot.answer_callback_query(call.id, f'Зарегистрировано! Ключ будет выдан один раз.', True)
-                    bot.edit_message_text(f'Ваш API ключ: {r["api_key"]}\nНадо будет указывать его в заголовок (header) - `Api-Token`.\nСсылка на API: https://florestapi-florestdev4185.amvera.io/', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+                bot.answer_callback_query(call.id, f'API закрыт.')
             if call.data == 'info-about-minecraft-server':
                 bot.edit_message_text(f'С помощью данной функции Вы можете узнать информацию о Java-сервере в Minecraft.\nВведите хост сервера, или IP+port (пример: 111.111.111.111:25565), или домен.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
                 bot.register_next_step_handler(call.message, info_about_minecraft_server)
+            if call.data == 'add_watermark_on_photo':
+                bot.edit_message_text(f'С помощью этой функции Вы можете добавить водяной знак на свою фотографию.\n\nОтправьте фото без сжатия, в формате JPG/PNG.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+                bot.register_next_step_handler(call.message, add_watermark_on_photo_)
+            if call.data == 'deepseek-ai-usage':
+                bot.edit_message_text(f'Эта функция нужна для работы с DeepSeek-v3.\nЗа обработку фотографий отвечает GPT-4o-vision.\n\nНапишите тон общения: toxic, или auto?\ntoxic - токсичное общение, не зависимо от промпта.\nauto - интонация, в зависимости от запроса.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+                bot.register_next_step_handler(call.message, toxic_or_auto_deepseek)
+            if call.data == 'download-playlist-elements':
+                bot.edit_message_text(f'Кратко, данная функция нужна для скачивания, в основном, музыкальных плейлистов.\nПлейлист должен быть с публичным доступом. Если в плейлисте больше 150 элементов, бот проигнорирует все, кроме первых 150. Если какое-то видео длиться больше 20 минут, - будет ошибка, а также игнорирование этого видео при скачивании контента.\n\nПришлите ссылку на открытый плейлист.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+                bot.register_next_step_handler(call.message, download_playlist_elements)
+            if call.data == 'parser-kwork':
+                bot.edit_message_text(f'Эта функция нужна для парсинга биржи Kwork!\n\nВведи номер категории. К примеру, 11 - это программирование.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+                bot.register_next_step_handler(call.message, parser_kwork)
+            if call.data == 'cut-link-clck-yandex':
+                bot.edit_message_text(f'Пожалуйста, пришлите ссылку для сокращения.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+                bot.register_next_step_handler(call.message, cut_link_clck)
+            if call.data == 'tiktok-video-downloader':
+                bot.edit_message_text(f'Данная функция парсит тикток-видео за пару секунд.\n\nВведите ролик на видео формата https://www.tiktok.com/@<username>/video/<video_id> или https://vt.tiktok.com/...', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+                bot.register_next_step_handler(call.message, tiktok_video_downloader)
+            if call.data == 'create-request-to-florest-server':
+                bot.edit_message_text(f'Привет! Ты готов приступить к отправке анкеты для того, чтобы попасть в белый список FlorestStreamsServer?\nПеред этим, пожалуйста, прочти правила по ссылке: https://telegra.ph/PRAVILA-FSS-08-02', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup(row_width=1).add(types.InlineKeyboardButton('Да, подать заявку', callback_data='create-request-to-fss'), types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+            if call.data == 'create-request-to-fss':
+                bot.edit_message_text(f'Благодарим! Напишите свое игровое имя.', call.message.chat.id, call.message.id)
+                bot.register_next_step_handler(call.message, create_request_to_fss)
+            if call.data == 'twitch-clips-downloader':
+                bot.edit_message_text(f'С помощью данной функции можно спарсить клипы стримов с Twitch.\n\nВведи ссылку на клип.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+                bot.register_next_step_handler(call.message, twitch_downloader)
+            if call.data == 'russian-trio-parsing':
+                bot.edit_message_text(f'Функция для парсинга видео RuTube, Яндекс Дзена и ВК.\n\nПришли ссылку на видео, пожалуйста.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+                bot.register_next_step_handler(call.message, yandex_rutube_vk_parser_video)
+            if call.data == 'unzip_apk_or_jar':
+                bot.edit_message_text(f'Данная функция помогает расшифровать исходный код, к примеру плагина в майнкрафте (jar), или приложения от вашего друга-кодера (apk).\n\nПришлите файл jar/apk до 20 МБ.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+                bot.register_next_step_handler(call.message, upzip_apk_or_jar)
+            if call.data == 'from-zip-to-apk':
+                bot.edit_message_text("Для быстрой компиляции исходного кода в архиве .zip в .apk.\n\nПришлите ваш .zip архив.", call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+                bot.register_next_step_handler(call.message, unzip_zip_to_apk)
+            if call.data == 'ai-upscale-x4':
+                bot.edit_message_text('Функция для увеличения исходного разрешения фотографии в 4 раза.\n\nСкиньте фото (.JPG/.PNG), без сжатия.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+                bot.register_next_step_handler(call.message, ai_upscale_x4)
+            if call.data == 'ai-subtitles-video':
+                bot.edit_message_text(f'Для использования этой функции, пожалуйста, дайте свой API ключ от этого сервиса: https://whisper-api.com/dashboard\n\nМожно при регистрации сразу получить 5 бесплатных токенов. API ключ будет использоваться только для проведения запросов в рамках бота.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+                bot.register_next_step_handler(call.message, get_token_whisper)
+            if call.data == 'img-format-convertation':
+                bot.edit_message_text(f'Скиньте изображение без сжатия (файлом) в следующих допустимых форматах: .jpg, .png, .gif, .webp, .bmp.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+                bot.register_next_step_handler(call.message, get_img_for_conv)
+            if call.data == 'vk-profile-info':
+                bot.edit_message_text(f'Пришли ник (без @) пользователя в VK.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+                bot.register_next_step_handler(call.message, get_vk_profile_info)
+            if call.data == 'steam-profile-parsing':
+                bot.edit_message_text(f'Напиши свой ник в Steam для получения статистики.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+                bot.register_next_step_handler(call.message, steam_profile_parsing)
+            if call.data == 'last_news_meduza':
+                parsed = feedparser.parse('https://meduza.io/rss/all').entries[:10]
+                list_ = [f'{i.title} - {i.published}\n{i.link}' for i in parsed]
+                string_ = "📰 Последние новости Meduza:\n\n" + "\n\n".join(list_)
+                bot.edit_message_text(string_, call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Назад', callback_data='back')))
+            if call.data == 'parse_statii':
+                bot.edit_message_text(f'Пожалуйста, пришлите ссылку на статью (Вики, любая статья) для парсинга.', call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton('Отмена', callback_data='otmena_galya')))
+                bot.register_next_step_handler(call.message, parse_statii)
         else:
             bot.answer_callback_query(call.id, f'Привет, братец!\nСейчас идут технические работы по причине: {maintenance["reason"]}\nПриходите через {maintenance["time"]}.', True)
     else:
